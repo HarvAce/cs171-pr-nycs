@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+
+
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/bootstrap-multiselect.css">
+
+    <script src="libs/d3.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="libs/jquery-2.1.3.min.js"></script>
+    <script src="libs/bootstrap.min.js" charset="utf-8"></script>
+    <script src="libs/bootstrap-multiselect.js" charset="utf-8"></script>
+    <script src="libs/queue.min.js" charset="utf-8"></script>
+
+    <script src = "js/linevis.js"></script>
+    <script src = "js/geovis.js"></script>
+    <script src = "js/barvis.js"></script>
+
+
+
+    <style>
+        body{
+            /*font-family: sans-serif;*/
+            background-color: #F0F0F0;
+        }
+        path { stroke: black;}
+
+        .schoolPoint
+        {
+            /*fill: black;*/
+            /*stroke: none;*/
+
+        }
+        .line {
+            fill: none;
+            stroke-width: 1.5px;
+            shape-rendering: crispEdges;
+        }
+
+        .background path {
+            fill: none;
+            stroke: #ddd;
+            shape-rendering: crispEdges;
+        }
+
+        .foreground path {
+            fill: none;
+            stroke: steelblue;
+        }
+
+        .brush .extent {
+            fill-opacity: .3;
+            stroke: #fff;
+            shape-rendering: crispEdges;
+        }
+
+        .axis line,
+        .axis path {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+
+        .axis text {
+            text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+            cursor: move;
+        }
+
+        .key path {
+            display: none;
+        }
+
+        .key line {
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+        .page-header{
+            margin-top: 0px;
+        }
+        #barVis{
+            background-color:slategray;
+        }
+
+    </style>
+</head>
+<body>
+<div class="container">
+<div class="page-header">
+    <h1>New York City Schools</h1>
+</div>
+    <div class="row equalHeight"/>
+        <div class="col-lg-8">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-filter"></span> 1. Choose your criteria</h3></div>
+    <div class="row">
+        <div class="col-lg-12">
+            <b>Metrics by:</b>
+            <div class="btn-group" role="group" aria-label="...">
+                <button type="button" class="btn btn-default" id="boroughButton">Borough</button>
+                <button type="button" class="btn btn-default" id="schoolDistrictButton">School District</button>
+                <button type="button" class="btn btn-default" id="schoolButton">School</button>
+            </div>
+        </div>
+        <div class="col-lg-12">
+            <b>Filter by:</b>
+            <div class="btn-group" role="group" aria-label="...">
+                <button type="button" class="btn btn-default disabled" style="opacity: 1;">Borough:</button>
+                <select id="boroughDropDown" multiple="multiple"></select>
+                <button type="button" class="btn btn-default disabled" style="opacity: 1;">District:</button>
+                <select id="districtDropDown" multiple="multiple"></select>
+                <button type="button" class="btn btn-default disabled" style="opacity: 1;">Level:</button>
+                <select id="schoolTypeDropDown" multiple="multiple"></select>
+            </div>
+        </div>
+        <div class="col-lg-12" id="lineVis">
+        </div>
+    </div>
+
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-pushpin"></span> 2. Choose your schools</h3></div>
+    <div class="row">
+        <div class="col-lg-6">
+            <b>Select:</b>
+            <select id="schoolDropDown" multiple="multiple"></select>
+        </div>
+        <div class="col-lg-2">
+
+        </div>
+        <div class="col-lg-4">
+            <b>Metric:</b>
+            <select id="metricDropDown"></select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12" id="geoVis">
+        </div>
+    </div>
+        </div>
+    </div>
+        <div class="col-lg-4" id="rightColumn">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-stats"></span> 3. Compare schools</h3></div>
+                <b>Metrics: </b>
+                <table class="table" id="schoolTable">
+                    <tr>
+                            <th>#</th>
+                            <th>School</th>
+
+                    </tr>
+                </table>
+                <div id="barVis"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    $(function(){
+
+        var geoData = [];
+        var statsData = [];
+        //TODO: Come back and add all of the metric types here
+        var keyMetrics = [
+            {"metric": "GraduationOutcomeTotalGradPercentage"},
+            {"metric": "StudentToTeacherRatio"}
+        ];
+
+        var startHere = function(){
+
+            queue()
+                    .defer(d3.json, "data/nycs.json")
+                    .defer(d3.json, "data/nycsa.json")
+                    .await(function(error, file1, file2){
+                        geoData = file1;
+                        statsData = file2;
+                        dataLoaded(error, geoData, statsData);
+                    });
+
+        }
+
+        var dataLoaded = function (error, _geoData, _statsData){
+            if(!error){
+                geoData = _geoData;
+
+                statsData = _statsData;
+
+                for (var item in geoData.objects.nysd.geometries)
+                {
+                    var schoolDistrictID = geoData.objects.nysd.geometries[item].properties.SchoolDist;
+
+                    //Attendance Data
+                    geoData.objects.nysd.geometries[item].properties.DistrictAttendance = statsData.SchoolDistricts[schoolDistrictID].DistrictAttendance;
+
+                    //Enrollment Data
+                    geoData.objects.nysd.geometries[item].properties.DistrictEnrollment = statsData.SchoolDistricts[schoolDistrictID].DistrictEnrollment;
+
+                }
+
+                for (var item in geoData.objects.nysp.geometries)
+                {
+                    var schoolID = geoData.objects.nysp.geometries[item].properties.ATS_CODE;
+
+                    //Graduation Outcome Data
+                    //Graduation Metric - Total Graduation Percentage of Cohort
+                    geoData.objects.nysp.geometries[item].properties.GraduationOutcomeTotalGradPercentage = statsData.Schools[schoolID].GraduationOutcomeTotalGradPercentage;
+                    //Graduation Metric - Total Dropped Out Percentage of Cohort
+                    geoData.objects.nysp.geometries[item].properties.GraduationOutcomeDroppedOutPercentageCohort = statsData.Schools[schoolID].GraduationOutcomeDroppedOutPercentageCohort;
+                    //Graduation Metric - Total Not Graduated, by Still Enrolled Percentage of Cohort
+                    geoData.objects.nysp.geometries[item].properties.GraduationOutcomeStillEnrolledPercentageCohort = statsData.Schools[schoolID].GraduationOutcomeStillEnrolledPercentageCohort;
+
+                    //Quality Score Data
+                    //Quality Score Metric - Quality Score
+                    geoData.objects.nysp.geometries[item].properties.QualityScore = statsData.Schools[schoolID].QualityScore;
+
+                    //Safety Data
+                    geoData.objects.nysp.geometries[item].properties.HasSafetyData = statsData.Schools[schoolID].HasSafetyData;
+                    geoData.objects.nysp.geometries[item].properties.MajorCount = statsData.Schools[schoolID].MajorCount;
+                    geoData.objects.nysp.geometries[item].properties.NoCrimCount = statsData.Schools[schoolID].NoCrimCount;
+                    geoData.objects.nysp.geometries[item].properties.OtherCount = statsData.Schools[schoolID].OtherCount;
+                    geoData.objects.nysp.geometries[item].properties.VioCount = statsData.Schools[schoolID].VioCount;
+                    geoData.objects.nysp.geometries[item].properties.PropCount = statsData.Schools[schoolID].PropCount;
+                    geoData.objects.nysp.geometries[item].properties.RangeA = statsData.Schools[schoolID].RangeA;
+                    geoData.objects.nysp.geometries[item].properties.Register = statsData.Schools[schoolID].Register;
+                    geoData.objects.nysp.geometries[item].properties.BuildingCode = statsData.Schools[schoolID].BuildingCode;
+                    geoData.objects.nysp.geometries[item].properties.ENGroupA = statsData.Schools[schoolID].ENGroupA;
+
+
+                    //Progress Report Data
+                    geoData.objects.nysp.geometries[item].properties.ProgressReportAdditionalCredit = statsData.Schools[schoolID].ProgressReportAdditionalCredit;
+                    geoData.objects.nysp.geometries[item].properties.ProgressReportEnvironmentCategoryScore = statsData.Schools[schoolID].ProgressReportEnvironmentCategoryScore;
+                    //Progress Report Metric - Overall Grade
+                    geoData.objects.nysp.geometries[item].properties.ProgressReportOverallGrade = statsData.Schools[schoolID].ProgressReportOverallGrade;
+                    geoData.objects.nysp.geometries[item].properties.ProgressReportOverallScore = statsData.Schools[schoolID].ProgressReportOverallScore;
+                    geoData.objects.nysp.geometries[item].properties.ProgressReportPerformanceCategoryScore = statsData.Schools[schoolID].ProgressReportPerformanceCategoryScore;
+                    geoData.objects.nysp.geometries[item].properties.ProgressReportProgressCategoryScore = statsData.Schools[schoolID].ProgressReportProgressCategoryScore;
+
+
+                    //Class Size Data
+                    //Class Size Metric - Student to Teacher Ratio
+                    geoData.objects.nysp.geometries[item].properties.StudentToTeacherRatio = statsData.Schools[schoolID].StudentToTeacherRatio;
+
+
+                    //Survey Data
+                    geoData.objects.nysp.geometries[item].properties.SurveyParentAcademicExpectationsScore = statsData.Schools[schoolID].SurveyParentAcademicExpectationsScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyParentCommunicationScore = statsData.Schools[schoolID].SurveyParentCommunicationScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyParentEngagementScore = statsData.Schools[schoolID].SurveyParentEngagementScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyParentResponseRate = statsData.Schools[schoolID].SurveyParentResponseRate;
+                    geoData.objects.nysp.geometries[item].properties.SurveyParentSafetyRespectScore = statsData.Schools[schoolID].SurveyParentSafetyRespectScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyStudentAcademicExpectationsScore = statsData.Schools[schoolID].SurveyStudentAcademicExpectationsScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyStudentCommunicationScore = statsData.Schools[schoolID].SurveyStudentCommunicationScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyStudentEngagementScore = statsData.Schools[schoolID].SurveyStudentEngagementScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyStudentResponseRate = statsData.Schools[schoolID].SurveyStudentResponseRate;
+                    geoData.objects.nysp.geometries[item].properties.SurveyStudentSafetyRespectScore = statsData.Schools[schoolID].SurveyStudentSafetyRespectScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyTeacherAcademicExpectationsScore = statsData.Schools[schoolID].SurveyTeacherAcademicExpectationsScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyTeacherCommunicationScore = statsData.Schools[schoolID].SurveyTeacherCommunicationScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyTeacherEngagementScore = statsData.Schools[schoolID].SurveyTeacherEngagementScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyTeacherResponseRate = statsData.Schools[schoolID].SurveyTeacherResponseRate;
+                    geoData.objects.nysp.geometries[item].properties.SurveyTeacherSafetyRespectScore = statsData.Schools[schoolID].SurveyTeacherSafetyRespectScore;
+                    //Survey Metric - Total Academic Expectations Score
+                    geoData.objects.nysp.geometries[item].properties.SurveyTotalAcademicExpectationsScore = statsData.Schools[schoolID].SurveyTotalAcademicExpectationsScore;
+                    //Survey Metric - Total Communication Score
+                    geoData.objects.nysp.geometries[item].properties.SurveyTotalCommunicationScore = statsData.Schools[schoolID].SurveyTotalCommunicationScore;
+                    //Survey Metric - Total Engagement Score
+                    geoData.objects.nysp.geometries[item].properties.SurveyTotalEngagementScore = statsData.Schools[schoolID].SurveyTotalEngagementScore;
+                    geoData.objects.nysp.geometries[item].properties.SurveyTotalResponseRate = statsData.Schools[schoolID].SurveyTotalResponseRate;
+                    //Survey Metric - Total Safety Respect Score
+                    geoData.objects.nysp.geometries[item].properties.SurveyTotalSafetyRespectScore = statsData.Schools[schoolID].SurveyTotalSafetyRespectScore;
+
+                }
+
+                //TODO: This is the code to calculate thresholds and create scales for all of the metrics.  Finish implementing, then update barvis, geovis, and linevis
+                for (var item in keyMetrics)
+                {
+                    var dataSortedAndFiltered = [];
+
+                    //TODO: Come back and fix this because this isn't sorting numerically right now
+                    dataSortedAndFiltered = geoData.objects.nysp.geometries.filter(function (d) {
+                        return d.properties[keyMetrics[item].metric] != "" && d.properties[keyMetrics[item].metric] != 0 && d.properties[keyMetrics[item].metric] != null;
+                    }).sort(function (a, b) {
+                        return parseFloat(a.properties[keyMetrics[item].metric]) > parseFloat(b.properties[keyMetrics[item].metric]);
+                    }).map(function (d) {
+                        return d.properties[keyMetrics[item].metric];
+                    });
+
+                    keyMetrics[item].TwentyFive = d3.quantile(dataSortedAndFiltered, .25);
+                    keyMetrics[item].Fifty = d3.quantile(dataSortedAndFiltered, .5);
+                    keyMetrics[item].SeventyFive = d3.quantile(dataSortedAndFiltered, .75);
+                    keyMetrics[item].Min = d3.min(geoData.objects.nysp.geometries.filter(function(a){
+                        return a.properties[keyMetrics[item].metric] != "" && a.properties[keyMetrics[item].metric] != null && a.properties[keyMetrics[item].metric] != 0;
+                    }), function(p) { return p.properties[keyMetrics[item].metric]; })-1;
+                    keyMetrics[item].Max = d3.max(geoData.objects.nysp.geometries.filter(function(a){
+                        return a.properties[keyMetrics[item].metric] != "" && a.properties[keyMetrics[item].metric] != null && a.properties[keyMetrics[item].metric] != 0;
+                    }), function(p) { return p.properties[keyMetrics[item].metric]; });
+                    keyMetrics[item].Scale = d3.scale.linear().domain([keyMetrics[item].Min, keyMetrics[item].Max]);
+                }
+
+                console.log(geoData);
+                console.log(statsData);
+                console.log(dataSortedAndFiltered);
+                initVis();
+            }
+        }
+
+        var initVis = function(){
+
+            var myEventHandler = new Object();
+
+            var geo_vis = new GeoVis(d3.select("#geoVis"), geoData, myEventHandler);
+            var line_vis = new LineVis(d3.select("#lineVis"), geoData, myEventHandler);
+            var bar_vis = new BarVis(d3.select("#barVis"), geoData, keyMetrics, myEventHandler);
+
+            $(myEventHandler).bind("selectionChanged", function(eventType, eventParameters){
+                geo_vis.onSelectionChange(eventParameters);
+            })
+
+            $(myEventHandler).bind("clicked", function(eventType, eventParameters){
+
+                var clickedSchool = geoData.objects.nysp.geometries.filter(function(d){
+                    return "S" + d.properties.ATS_CODE == eventParameters.schoolPoint;
+                });
+
+                console.log(clickedSchool);
+
+                if(eventParameters.action == true)
+                {
+                    var row = d3.select("#schoolTable").append("tr").classed(eventParameters.schoolPoint, true);
+                    row.append("td").text(clickedSchool[0].properties.ATS_CODE);
+                    row.append("td").text(clickedSchool[0].properties.SCHOOLNAME);
+                }
+                else
+                {
+                    d3.select("#schoolTable").select("." + eventParameters.schoolPoint).remove();
+                }
+
+                bar_vis.clicked(eventParameters);
+            })
+
+            //Set the default pressed button
+            d3.select("#schoolButton").classed("active", true);
+            d3.select("#schoolButton").classed("btn-primary", true);
+
+            d3.select("#boroughButton")
+                    .on("click", function(d){
+                        d3.select(this).classed("active", true);
+                        d3.select(this).classed("btn-primary", true);
+                        d3.select(this).classed("btn-default", false);
+                        d3.select("#schoolDistrictButton").classed("active", false);
+                        d3.select("#schoolDistrictButton").classed("btn-primary", false);
+                        d3.select("#schoolDistrictButton").classed("btn-default", true);
+                        d3.select("#schoolButton").classed("active", false);
+                        d3.select("#schoolButton").classed("btn-primary", false);
+                        d3.select("#schoolButton").classed("btn-default", true);
+
+                        geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                        line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    });
+
+            d3.select("#schoolDistrictButton")
+                    .on("click", function(d){
+                        d3.select(this).classed("active", true);
+                        d3.select(this).classed("btn-primary", true);
+                        d3.select(this).classed("btn-default", false);
+                        d3.select("#boroughButton").classed("active", false);
+                        d3.select("#boroughButton").classed("btn-primary", false);
+                        d3.select("#boroughButton").classed("btn-default", true);
+                        d3.select("#schoolButton").classed("active", false);
+                        d3.select("#schoolButton").classed("btn-primary", false);
+                        d3.select("#schoolButton").classed("btn-default", true);
+
+                        geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                        line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    });
+
+            d3.select("#schoolButton")
+                    .on("click", function(d){
+                        d3.select(this).classed("active", true);
+                        d3.select(this).classed("btn-primary", true);
+                        d3.select(this).classed("btn-default", false);
+                        d3.select("#boroughButton").classed("active", false);
+                        d3.select("#boroughButton").classed("btn-primary", false);
+                        d3.select("#boroughButton").classed("btn-default", true);
+                        d3.select("#schoolDistrictButton").classed("active", false);
+                        d3.select("#schoolDistrictButton").classed("btn-primary", false);
+                        d3.select("#schoolDistrictButton").classed("btn-default", true);
+
+                        geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                        line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    });
+
+
+
+            //Set up the drop down for the boroughs
+            var boroughDropDownData = [];
+            for (var i=0; i<geoData.objects.nybb.geometries.length; i++)
+            {
+                boroughDropDownData.push({label: geoData.objects.nybb.geometries[i].properties.BoroName, value: geoData.objects.nybb.geometries[i].properties.BoroCode });
+            }
+
+            boroughDropDownData = boroughDropDownData.sort(function(a, b){
+                return a.value - b.value;
+            });
+
+            $("#boroughDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                includeSelectAllOption: true,
+                nonSelectedText: "None",
+                onChange: function(option, checked, select){
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                }
+            });
+            $("#boroughDropDown").multiselect("dataprovider", boroughDropDownData);
+
+
+            //Set up the drop down for the school districts
+            var schoolDistrictDropDownData = [];
+            for (var i=0; i<geoData.objects.nysd.geometries.length; i++)
+            {
+                schoolDistrictDropDownData.push({label: geoData.objects.nysd.geometries[i].properties.SchoolDist, value: geoData.objects.nysd.geometries[i].properties.SchoolDist });
+            }
+
+            schoolDistrictDropDownData = schoolDistrictDropDownData.sort(function(a, b){
+                return a.value - b.value;
+            });
+
+            $("#districtDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                includeSelectAllOption: true,
+                nonSelectedText: "None",
+                onChange: function(option, checked, select){
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                }
+            });
+            $("#districtDropDown").multiselect("dataprovider", schoolDistrictDropDownData);
+
+
+            //Set up the drop down for the schools
+            var schoolDropDownData = [];
+            for (var i=0; i<geoData.objects.nysp.geometries.length; i++)
+            {
+                schoolDropDownData.push({label: geoData.objects.nysp.geometries[i].properties.SCHOOLNAME, value: geoData.objects.nysp.geometries[i].properties.ATS_CODE });
+            }
+
+            schoolDropDownData = schoolDropDownData.sort(function(a, b){
+                return a.value - b.value;
+            });
+
+            $("#schoolDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                includeSelectAllOption: true,
+                nonSelectedText: "None",
+                onChange: function(option, checked, select){
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schools": $('#schoolDropDown option:selected'), "metrics": $('#metricDropDown option:selected')});
+                }
+            });
+            $("#schoolDropDown").multiselect("dataprovider", schoolDropDownData);
+
+            //Set up the drop down for the school types
+            var schoolTypes = d3.set(geoData.objects.nysp.geometries.map(function(d){
+                return d.properties.SCH_TYPE;
+            })).values();
+
+            var schoolTypeDropDownData = [];
+
+            for (var i=0; i<schoolTypes.length; i++)
+            {
+                schoolTypeDropDownData.push({label: schoolTypes[i], value: schoolTypes[i] });
+            }
+
+            schoolTypeDropDownData = schoolTypeDropDownData.sort(function(a, b){
+                return a.value - b.value;
+            });
+
+            $("#schoolTypeDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                includeSelectAllOption: true,
+                nonSelectedText: "None",
+                onChange: function(option, checked, select){
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                }
+            });
+            $("#schoolTypeDropDown").multiselect("dataprovider", schoolTypeDropDownData);
+
+            var metricDropDownData = [
+                {
+                    label: "School District", children: [
+                    {label: "District Attendance %", value: "DistrictAttendance"}
+                ]
+                },
+                {
+                    label: "School", children: [
+
+                {label: "Quality Score", value: "QualityScore"},
+                {label: "Total Graduation Percentage", value: "GraduationOutcomeTotalGradPercentage"},
+                {label: "Progress Report Overall Grade", value: "ProgressReportOverallGrade"},
+                {label: "Student to Teacher Ratio", value: "StudentToTeacherRatio"}
+                ]
+                }
+            ];
+
+            $("#metricDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                includeSelectAllOption: true,
+                nonSelectedTest: "None",
+                onChange: function(option, checked, select){
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                }
+            });
+            $("#metricDropDown").multiselect("dataprovider", metricDropDownData);
+
+            $("#metricDropDown").multiselect("deselect", "DistrictAttendance");
+            $("#metricDropDown").multiselect("select", "QualityScore");
+
+            $('.equalHeight').each(function(){
+                var equal = $(this).innerHeight();
+
+                $("#rightColumn .panel").outerHeight(equal-20);
+            })
+
+
+        }
+
+        startHere();
+
+    })
+
+    var getInnerWidth = function(element) {
+        var style = window.getComputedStyle(element.node(), null);
+        return parseInt(style.getPropertyValue('width'));
+    }
+</script>
+</body>
+</html>
