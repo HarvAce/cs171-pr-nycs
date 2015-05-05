@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+
+
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <script src="libs/jquery-2.1.3.min.js"></script>
+    <script src="libs/bootstrap.min.js" charset="utf-8"></script>
+
+    <style>
+        body{
+            background-color: #F0F0F0;
+        }
+        .navbar .navbar-nav {
+            display: inline-block;
+            float: none;
+            vertical-align: top;
+        }
+
+        .navbar {
+            text-align: center;
+        }
+        .jumbotron{
+            min-height: 650px;
+            background-color: white;
+            background-image: url("img/silhouetteLarge.gif");
+            background-repeat: no-repeat;
+            background-position: right bottom;
+            background-size: 1140px;
+            margin: 0px;
+            padding: 0px;
+
+        }
+        iframe{
+            width: 1140;
+        }
+        .vertical-center {
+            display: flex;
+            align-items: center;
+        }
+        .page-header{
+            margin-top: 0px;
+            margin-bottom: 0px;
+            padding-bottom: 0px;
+        }
+        h1 a{
+            color: black;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <h1><a href="index.html">New York City Schools</a></h1>
+    </div>
+    <nav class="navbar navbar-default">
+        <div class="navbar-header">
+            <ul class="nav navbar-nav">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="nycs.html">Visualization</a></li>
+                <li class="active"><a href="process.html">Process Book</a></li>
+                <li><a href="sources.html">Sources</a></li>
+                <li><a href="profile.html">Data Lineage & Profile</a></li>
+                <li><a href="results.html">Results</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="panel panel-default">
+        <h3 style="padding-left: 30px;">Process Book</h3>
+        <object width="1140" height="640" type="application/pdf" data="processbook_frascati-robinson.pdf" id="pdf_content">
+            <p><a href="processbook_frascati-robinson.pdf">Download PDF</a></p>
+        </object>
+    </div>
+    <nav class="navbar navbar-default">
+        <div class="collapse navbar-collapse navbar-ex1-collapse">
+            <ul class="nav navbar-nav" style="color: #777">
+                All data sourced from New York City Open Data for school year 2010-2011.<br/>
+                Visualization created by Aasta Frascati-Robinson for CS171.
+            </ul>
+        </div>
+    </nav>
+</div>
+</body>
+</html>

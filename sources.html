@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+
+
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <script src="libs/jquery-2.1.3.min.js"></script>
+    <script src="libs/bootstrap.min.js" charset="utf-8"></script>
+
+    <style>
+        body{
+            background-color: #F0F0F0;
+        }
+        .navbar .navbar-nav {
+            display: inline-block;
+            float: none;
+            vertical-align: top;
+        }
+
+        .navbar {
+            text-align: center;
+        }
+        .jumbotron{
+            min-height: 650px;
+            background-color: white;
+            background-image: url("img/silhouetteLarge.gif");
+            background-repeat: no-repeat;
+            background-position: right bottom;
+            background-size: 1140px;
+            margin: 0px;
+            padding: 0px;
+
+        }
+        iframe{
+            width: 1140;
+        }
+        .vertical-center {
+            display: flex;
+            align-items: center;
+        }
+        .page-header{
+            margin-top: 0px;
+            margin-bottom: 0px;
+            padding-bottom: 0px;
+        }
+        h1 a{
+            color: black;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <h1><a href="index.html">New York City Schools</a></h1>
+    </div>
+    <nav class="navbar navbar-default">
+        <div class="navbar-header">
+            <ul class="nav navbar-nav">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="nycs.html">Visualization</a></li>
+                <li><a href="process.html">Process Book</a></li>
+                <li class="active"><a href="sources.html">Sources</a></li>
+                <li><a href="profile.html">Data Lineage & Profile</a></li>
+                <li><a href="results.html">Results</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="panel panel-default">
+        <div class="row">
+            <div class="col-lg-12" style="padding-left: 30px;">
+                <h3>Sources</h3>
+                <p>This project was possible because of the use of many sources, which are cited below.</p>
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="http://getbootstrap.com/">Bootstrap Framework</a></li>
+                    <li><a href="http://d3js.org/">D3 Library</a></li>
+                    <li><a href="https://github.com/mbostock/topojson/wiki">TopoJSON Library</a></li>
+                    <li><a href="https://jquery.com/">jQuery Library</a></li>
+                    <li><a href="http://davidstutz.github.io/bootstrap-multiselect/">Bootstrap Multiselect Library</a></li>
+                    <li><a href="https://github.com/mbostock/queue">Queue Library</a></li>
+                    <li><a href="https://github.com/Caged/d3-tip">d3.tip Library</a></li>
+                    <li><a href="http://github.hubspot.com/pace/docs/welcome/">PACE Library</a></li>
+                </ul>
+                <h4>Stock</h4>
+                <ul>
+                    <li><a href="http://www.shutterstock.com/pic-98499878/stock-vector-vector-of-the-new-york-skyline.html">Vector of the New York Skyline</a>: chuckstock</li>
+                    <li><a href="http://audiojungle.net/item/beautiful-day/11239523">Audio File Beautiful Day</a>: maxvic</li>
+                </ul>
+                <h4>Reference Implementations</h4>
+                <ul>
+                    <li><a href="http://bl.ocks.org/jasondavies/1341281">Parallel Coordinates</a>: Jason Davies</li>
+                    <li><a href="http://bl.ocks.org/mbostock/7555321">Wrap Axis Label Text</a>: Mike Bostock</li>
+                </ul>
+                <h4>Data</h4>
+                <h5>Boroughs</h5>
+                <ul>
+                    <li><a href="http://www.nyc.gov/html/dcp/download/bytes/nybb_15a.zip">Borough Boundaries (Clipped to Shoreline) Shape File</a>: Department of City Planning, City of New York</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/2010-2011-Class-Size-Borough-Summary/7yds-6i8e">2010-2011 Class Size - Borough Summary</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/English-Language-Arts-ELA-Test-Results-by-Grade-20/4kse-vfnd">English Language Arts (ELA) Test Results by Grade 2006-2011 - Boro - All Students</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/NYS-Math-Test-Results-By-Grade-2006-2011-Boro-All-/a2nf-cvfm">NYS Math Test Results By Grade 2006-2011 - Boro - All Students</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/Graduation-Outcomes-Borough-Classes-of-2005-2011-T/di8r-g5w9">Graduation Outcomes - Borough - Classes of 2005-2011 - Total Cohort</a>: New York City Open Data</li>
+                </ul>
+                <h5>School Districts</h5>
+                <ul>
+                    <li><a href="http://www.nyc.gov/html/dcp/download/bytes/nysd_15a.zip">School Districts (Clipped to Shoreline) Shape File</a>: Department of City Planning, City of New York</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/School-Attendance-And-Enrollment-By-District-2010-/rfpq-hs49">School Attendance and Enrollment by District 2010-11</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/2010-2011-Class-Size-District-level-Summary/82rt-zc4y">2010-2011 Class Size - District-level Summary</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/English-Language-Arts-ELA-Test-Results-by-Grade-20/85ty-ti6v">English Language Arts (ELA) Test Results by Grade 2006-2011 - District - All Students</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/NYS-Math-Test-Results-By-Grade-2006-2011-District-/gyaz-82xj">NYS Math Test Results by Grade 2006-2011 - District - All Students</a>: New York City Open Data</li>
+                </ul>
+                <h5>Schools</h5>
+                <ul>
+                    <li><a href="https://data.cityofnewyork.us/Education/School-Point-Locations/jfju-ynrr">School Point Locations Shape File</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/Quality-Review-2005-2012/piri-jns7">Quality Review 2005-2012</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/School-Progress-Reports-All-Schools-2010-11/yig9-9zum">School Progress Reports - All Schools - 2010-11</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/NYC-School-Survey-2011/mnz3-dyi8">NYC School Survey - 2011</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/English-Language-Arts-ELA-Test-Results-by-Grade-20/yu9n-iqyk">English Language Arts (ELA) Test Results by Grade 2006-2011 - School Level - All Students</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/NYS-Math-Test-Results-By-Grade-2006-2011-School-Le/jufi-gzgp">NYS Math Test Results by Grade 2006-2011 - School Level - All Students</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/Graduation-Outcomes-School-Level-Classes-of-2005-2/cma4-zi8m">Graduation Outcomes - School Level - Classes of 2005-2011 - Total Cohort</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/School-Safety-Report/qybk-bjjc">School Safety Report</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/2010-2011-Class-Size-School-level-detail/urz7-pzb3">2010-2011 Class Size - School Level Detail</a>: New York City Open Data</li>
+                    <li><a href="https://data.cityofnewyork.us/Education/NYC-Public-High-School-Program-Data/mreg-rk5p">NYC Public High School Program Data</a>: New York City Open Data</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <nav class="navbar navbar-default">
+        <div class="collapse navbar-collapse navbar-ex1-collapse">
+            <ul class="nav navbar-nav" style="color: #777">
+                All data sourced from New York City Open Data for school year 2010-2011.<br/>
+                Visualization created by Aasta Frascati-Robinson for CS171.
+            </ul>
+        </div>
+    </nav>
+</div>
+</body>
+</html>

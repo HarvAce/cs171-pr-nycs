@@ -1,12 +1,16 @@
-LineVis = function(_parentElement, _geoData, _eventHandler){
+LineVis = function(_parentElement, _geoData, _metricsData, _statsData, _eventHandler){
     this.parentElement = _parentElement;
     this.geoData = _geoData;
+    this.metricsData = _metricsData;
+    this.statsData = _statsData;
+    this.displayStatsData = [];
     this.eventHandler = _eventHandler;
     this.displayData = jQuery.extend(true, {}, _geoData);
+    this.activeMetricType = "schoolButton";
 
-    this.margin = {top: 20, right: 20, bottom: 20, left: 20};
-    this.width = 800 - this.margin.left - this.margin.right;
-    this.height = 200 - this.margin.top - this.margin.bottom;
+    this.margin = {top: 10, right: 20, bottom: 30, left: -10};
+    this.width = 1200 - this.margin.left - this.margin.right;
+    this.height = 230 - this.margin.top - this.margin.bottom;
 
 
     this.initVis();
@@ -29,6 +33,19 @@ LineVis.prototype.initVis = function(){
     that.background = null;
     that.foreground = null;
 
+    that.tip = d3.tip()
+        .attr("class", "d3-tip-noarrow")
+        .offset([0, 0])
+        .direction('s')
+        .html(function(d){
+            var currentMetricInfo = $.grep(that.metricsData[that.activeMetricType], function(e){
+                return e.metric == d;
+            })[0];
+            return(currentMetricInfo.legendCaption + (currentMetricInfo.textOne != null ? "<br/>" + currentMetricInfo.textOne : "") + (currentMetricInfo.textTwo != null ? "<br/>" + currentMetricInfo.textTwo : "") + (currentMetricInfo.textThree != null ? "<br/>" + currentMetricInfo.textThree : "") + (currentMetricInfo.textFour != null ? "<br/>" + currentMetricInfo.textFour : "") + (currentMetricInfo.textFive != null ? "<br/>" + currentMetricInfo.textFive : "") + (currentMetricInfo.textSix != null ? "<br/>" + currentMetricInfo.textSix : "") + (currentMetricInfo.textSeven != null ? "<br/>" + currentMetricInfo.textSeven : "") + (currentMetricInfo.textEight != null ? "<br/>" + currentMetricInfo.textEight : "") + (currentMetricInfo.textNine != null ? "<br/>" + currentMetricInfo.textNine : ""));
+        });
+
+    that.svg.call(that.tip);
+
     that.wrangleData(null);
 
     that.updateVis();
@@ -37,20 +54,43 @@ LineVis.prototype.initVis = function(){
 LineVis.prototype.wrangleData = function(_filterFunction){
     var that = this;
 
-    that.displayData = that.filterAndAggregate(_filterFunction);
+    that.displayStatsData = that.filterAndAggregate(_filterFunction);
 }
 
 LineVis.prototype.updateVis = function() {
     var that = this;
 
-        // TODO : REFACTOR Take this whole section out and pass the key metrics and scales in through some JSON from nycs.html
-        // Extract the list of dimensions and create a scale for each. --> needs to be off geoData so results aren't skewed as filters change
-        that.x.domain(that.dimensions = d3.keys(that.geoData.objects.nysp.geometries[0].properties).filter(function(d) {
-            return (d == "QualityScore" || d == "ProgressReportOverallGrade" || d == "GraduationOutcomeTotalGradPercentage" || d == "StudentToTeacherRatio" || d == "SurveyTotalAcademicExpectationsScore" || d == "SurveyTotalCommunicationScore" || d == "SurveyTotalEngagementScore" || d == "SurveyTotalSafetyRespectScore");
-        }));
+    var metricType;
+    var selectorID;
+
+    if(that.activeMetricType == "boroughButton")
+    {
+        metricType = "Boroughs";
+        selectorID = "BoroCode";
+    }
+    else if(that.activeMetricType == "schoolDistrictButton")
+    {
+        metricType = "SchoolDistricts";
+        selectorID = "SchoolDist";
+    }
+    else if(that.activeMetricType == "schoolButton")
+    {
+        metricType = "Schools";
+        selectorID = "ATS_CODE";
+    }
+
+        // Extract the list of dimensions and create a scale for each.
+        that.x.domain(that.dimensions = that.metricsData[that.activeMetricType].map(function(d){ return d.metric}).filter(function(d){
+                return d=="EnrollmentDensitySM" || d=="ProgressReportOverallScore" || d=="BuildingCrimeMajorRate" || d=="GraduationOutcomeTotalGradPercentage" || d=="DistrictAttendance" || d=="ClassSizeGenEdAverage" || d=="MathMean" || d=="EnglishMean";
+            })
+        );
 
         that.dimensions.forEach(function(d, i)
         {
+            var currentMetric = $.grep(that.metricsData[that.activeMetricType], function (e) {
+                return e.metric == d;
+            })[0];
+
             if (d == "QualityScore")
             {
                 //"": No Data
@@ -68,17 +108,22 @@ LineVis.prototype.updateVis = function() {
                     .domain(["", "F", "D", "C", "B", "A"])
                     .rangePoints([that.height, 0]);
             }
-            else
+            else if(d == "BuildingCrimeMajorRate" || that.activeMetricType == "schoolDistrictButton" || that.activeMetricType == "boroughButton")
+            {
+                //The min on BuildingCrimeMajorRate is already zero, and all boroughs and districts have data, therefore, no need for arbitrary minimum
+                that.y[d] = d3.scale.linear()
+                    .domain([
+                        currentMetric.Min, currentMetric.Max
+                    ])
+                    .range([that.height, 0]);
+            }
+            else if (that.activeMetricType == "schoolButton")
             {
                 that.y[d] = d3.scale.linear()
-                    //.domain(d3.extent(that.displayData.objects.nysp.geometries, function(p) { return +p.properties[d]; }))
                     //Creates an arbitrary no data point 1 point below the actual minimum
-                    .domain([d3.min(that.geoData.objects.nysp.geometries.filter(function(a){
-                        return a.properties[d] != "" && a.properties[d] != null && a.properties[d] != 0;
-                    }), function(p) { return +p.properties[d]; })-1,
-                        d3.max(that.geoData.objects.nysp.geometries.filter(function(a){
-                            return a.properties[d] != "" && a.properties[d] != null && a.properties[d] != 0;
-                        }), function(p) { return +p.properties[d]; })])
+                    .domain([
+                        currentMetric.Min-1, currentMetric.Max
+                    ])
                     .range([that.height, 0]);
             }
 
@@ -93,13 +138,25 @@ LineVis.prototype.updateVis = function() {
         // SELECT: Background lines
         var backgroundPaths = that.svg.selectAll(".background")
                 .selectAll("path")
-                .data(that.displayData.objects.nysp.geometries);
+                .data(that.displayStatsData);
 
         // ENTER: Background lines
         backgroundPaths
-                .enter().append("path")
+                .enter().append("path");
+
+        backgroundPaths
                 .attr("class", function(d){
-                    return "S" + d.properties.ATS_CODE;
+                if(that.activeMetricType == "boroughButton")
+                {
+                    return "B" + d.BoroCode;
+                }
+                else if(that.activeMetricType == "schoolDistrictButton")
+                {
+                    return "D" + d.SchoolDist;
+                }
+                else if(that.activeMetricType == "schoolButton") {
+                    return "S" + d.ATS_CODE;
+                }
                 });
 
         // UPDATE: Background lines
@@ -116,14 +173,81 @@ LineVis.prototype.updateVis = function() {
         // SELECT: Foreground lines
         var foregroundPaths = that.svg.selectAll(".foreground")
             .selectAll("path")
-            .data(that.displayData.objects.nysp.geometries);
+            .data(that.displayStatsData);
 
         // ENTER: Foreground lines
         foregroundPaths
-                .enter().append("path")
+                .enter().append("path");
+
+        foregroundPaths
                 .attr("class", function(d){
-                    return "S" + d.properties.ATS_CODE;
-                });
+                    if(that.activeMetricType == "boroughButton")
+                    {
+                        return "B" + d.BoroCode;
+                    }
+                    else if(that.activeMetricType == "schoolDistrictButton")
+                    {
+                        return "D" + d.SchoolDist;
+                    }
+                    else if(that.activeMetricType == "schoolButton") {
+                        return "S" + d.ATS_CODE;
+                    }
+                })
+            .on("mouseover", function(d){
+                d3.select(this).moveToFront().style({"stroke": "black"}).attr("stroke-width", 3);
+                if(that.activeMetricType == "boroughButton")
+                {
+                    d3.select("#hoverItem").html(d.BoroName);
+                    $(that.eventHandler).trigger("hoverLine", {schoolPoint: "B" + d.BoroCode});
+                }
+                else if (that.activeMetricType == "schoolDistrictButton")
+                {
+                    d3.select("#hoverItem").html("District " + d.SchoolDist);
+                    $(that.eventHandler).trigger("hoverLine", {schoolPoint: "D" + d.SchoolDist});
+                }
+                else if (that.activeMetricType == "schoolButton") {
+                    d3.select("#hoverItem").html(d.SCHOOLNAME);
+                    $(that.eventHandler).trigger("hoverLine", {schoolPoint: "S" + d.ATS_CODE});
+                }
+
+                if(that.svg.selectAll(".foreground").selectAll(".active")[0].length >= 6 && d3.select(this).classed("active") == false) {
+                    d3.select(this).style("cursor", "not-allowed");
+                }
+            })
+            .on("mouseout", function(d){
+                if(d3.select(this).classed("active") == false) {
+                    d3.select(this).style({"stroke": "steelblue"}).attr("stroke-width", 1);
+                }
+                d3.select("#hoverItem").html("None");
+
+                d3.select(this).style("cursor", "pointer");
+
+                if(that.activeMetricType == "boroughButton")
+                {
+                    $(that.eventHandler).trigger("hoverLineOut", {schoolPoint: "B" + d.BoroCode});
+                }
+                else if(that.activeMetricType == "schoolDistrictButton")
+                {
+                    $(that.eventHandler).trigger("hoverLineOut", {schoolPoint: "D" + d.SchoolDist});
+                }
+                else if (that.activeMetricType == "schoolButton")
+                {
+                    $(that.eventHandler).trigger("hoverLineOut", {schoolPoint: "S" + d.ATS_CODE});
+                }
+            })
+            .on("click", function(d){
+                if(that.svg.selectAll(".foreground").selectAll(".active")[0].length < 6 || (that.svg.selectAll(".foreground").selectAll(".active")[0].length >= 6 && d3.select(this).classed("active") == true)) {
+                    if (that.activeMetricType == "boroughButton") {
+                        that.clicked("B" + d.BoroCode, "line");
+                    }
+                    else if (that.activeMetricType == "schoolDistrictButton") {
+                        that.clicked("D" + d.SchoolDist, "line");
+                    }
+                    else if (that.activeMetricType == "schoolButton") {
+                        that.clicked("S" + d.ATS_CODE, "line");
+                    }
+                }
+            });
 
         // UPDATE: Foreground lines
         foregroundPaths
@@ -135,9 +259,13 @@ LineVis.prototype.updateVis = function() {
         // Each y-axis gets a group and drag behavior
         // START CITATION - Below grouping and dragging behavior code is from the Jason Davies example: http://bl.ocks.org/jasondavies/1341281
         var g = that.svg.selectAll(".dimension")
-            .data(that.dimensions)
+            .data(that.dimensions).moveToFront();
+
+            g
             .enter().append("g")
-            .attr("class", "dimension")
+            .attr("class", "dimension");
+
+            g
             .attr("transform", function(d) { return "translate(" + that.x(d) + ")"; })
             .call(d3.behavior.drag()
                 .origin(function(d) { return {x: that.x(d)}; })
@@ -165,59 +293,55 @@ LineVis.prototype.updateVis = function() {
                 }));
         // END CITATION
 
-        // TODO: REFACTOR Get the metric labels out of here and pass in through some JSON from nycs.html
-        // TODO: Get the y-axis labels to wrap
+        that.svg.selectAll(".axis").remove();
+
         // Render the y-axes
         g.append("g")
             .attr("class", "axis")
-            .each(function(d) { d3.select(this).call(that.axis.scale(that.y[d]).tickFormat(function(a){
-                if(a == that.y[d].domain()[0])
+            .each(function(d) {
+
+                var currentMetric = $.grep(that.metricsData[that.activeMetricType], function (e) {
+                    return e.metric == d;
+                })[0];
+
+                d3.select(this).call(that.axis.scale(that.y[d]).tickFormat(function(a){
+
+                if(that.activeMetricType == "schoolButton" && a == that.y[d].domain()[0])
                 {
                     return "None";
                 }
-                else
+                else if(currentMetric.formatType == "integer")
                 {
-                    return a;
+                    var integerFormat = d3.format("d");
+                    return integerFormat(parseInt(a));
                 }
-            })); })
+                else if(currentMetric.formatType == "percentage")
+                {
+                    var decimalFormat = d3.format("." + currentMetric.formatPrecision + "f");
+                    return decimalFormat(a) + "%";
+                }
+                else if(currentMetric.formatType == "decimal")
+                {
+                    var decimalFormat = d3.format("." + currentMetric.formatPrecision + "f");
+                    return decimalFormat(a);
+                }
+            }).tickValues([that.y[d].domain()[0], (that.y[d].domain()[0] + (that.y[d].domain()[1] + that.y[d].domain()[0])/ 2) / 2, (that.y[d].domain()[1] + that.y[d].domain()[0])/ 2, (that.y[d].domain()[1] + (that.y[d].domain()[1] + that.y[d].domain()[0])/ 2) / 2, that.y[d].domain()[1]])); })
             .append("text")
+            .classed("axisText", true)
             .style("text-anchor", "middle")
-            .attr("y", -9)
+            .attr("y", 55)
             .text(function(d) {
-                if (d === "QualityScore")
-                {
-                    return "Quality Score";
-                }
-                else if(d === "ProgressReportOverallGrade")
-                {
-                    return "Progress Grade";
-                }
-                else if(d === "GraduationOutcomeTotalGradPercentage")
-                {
-                    return "Graduation Percentage";
-                }
-                else if(d === "StudentToTeacherRatio")
-                {
-                    return "Student to Teacher Ratio";
-                }
-                else if(d === "SurveyTotalAcademicExpectationsScore")
-                {
-                    return "Academic Expectations Score";
-                }
-                else if(d === "SurveyTotalCommunicationScore")
-                {
-                    return "Communication Score";
-                }
-                else if(d === "SurveyTotalEngagementScore")
-                {
-                    return "Engagement Score";
-                }
-                else if(d === "SurveyTotalSafetyRespectScore")
-                {
-                    return "Safety Respect Score";
-                }
+                var currentMetric = $.grep(that.metricsData[that.activeMetricType], function (e) {
+                    return e.metric == d;
+                })[0];
+                return currentMetric.delimLabel;
+            })
+            .on("mouseover", that.tip.show)
+            .on("mouseout", that.tip.hide);
 
-            });
+    g.selectAll(".axisText").call(wrap, 20);
+
+    that.svg.selectAll(".brush").remove();
 
         // Render brush for each y-axis
         // START CITATION - Below brush code is from the Jason Davies example: http://bl.ocks.org/jasondavies/1341281
@@ -230,6 +354,8 @@ LineVis.prototype.updateVis = function() {
             .attr("x", -8)
             .attr("width", 16);
         // END CITATION
+
+    g.exit().remove();
 
         // START CITATION - All of the below function code is from the Jason Davies example: http://bl.ocks.org/jasondavies/1341281
         // Minimal changes have been made to support some additional functionality that was desired (making no data points show up at the minimum point on the y scale)
@@ -246,12 +372,12 @@ LineVis.prototype.updateVis = function() {
         function path(d) {
             return that.line(that.dimensions.map(function (p) {
                 //If no data, make the data point show up at the arbitrary no data point, the minimum on the y scale
-                if(d.properties[p] == "" || d.properties[p] == null || d.properties[p] == 0) {
+                if(d[p] == "" || d[p] == null || d[p] == 0) {
                     return [position(p), that.y[p](that.y[p].domain()[0])];
                 }
                 else
                 {
-                    return [position(p), that.y[p](d.properties[p])];
+                    return [position(p), that.y[p](d[p])];
                 }
             }));
         }
@@ -293,7 +419,7 @@ LineVis.prototype.updateVis = function() {
 
                 }
                 else {
-                    return extents[i][0] <= d.properties[p] && d.properties[p] <= extents[i][1];
+                    return extents[i][0] <= d[p] && d[p] <= extents[i][1];
                 }
             }) ? null : "none";
         });
@@ -308,64 +434,227 @@ LineVis.prototype.updateVis = function() {
             }
         }
 
+        that.svg.selectAll(".active").classed("active", false).style({"stroke": "steelblue"}).attr("stroke-width", 1);
+
         $(that.eventHandler).trigger("selectionChanged", {schools: brushSchoolList});
     }
     // END CITATION
 
+    //START CITATION: The code to wrap axis label text is from Mike Bostock's example: http://bl.ocks.org/mbostock/7555321
+    function wrap(text, width) {
+        text.each(function () {
+            var text = d3.select(this),
+                words = text.text().split("/").reverse(),
+                word,
+                line = [],
+                lineNumber = 0,
+                lineHeight = 1.1, // ems
+                y = text.attr("y"),
+                dy = parseFloat(14),
+                tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+            while (word = words.pop()) {
+                line.push(word);
+                tspan.text(line.join(" "));
+                if (tspan.node().getComputedTextLength() > width) {
+                    line.pop();
+                    tspan.text(line.join(" "));
+                    line = [word];
+                    tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+                }
+            }
+        });
+    }
+    //END CITATION
 }
 
 LineVis.prototype.filterAndAggregate = function(_filter) {
 
     var that = this;
 
-    if (_filter != null) {
+
         var boroughFilterList = [];
         var schoolDistrictFilterList = [];
         var schoolTypesFilterList = [];
-        if(_filter.boroughs.length>0) {
-            for (var i=0; i<_filter.boroughs.length; i++)
-            {
-                boroughFilterList.push(parseInt(_filter.boroughs[i].value));
-            }
-        }
-        if(_filter.districts.length>0)
-        {
-            for (var i=0; i<_filter.districts.length; i++)
-            {
-                schoolDistrictFilterList.push(parseInt(_filter.districts[i].value));
-            }
-        }
-        if(_filter.schoolTypes.length>0)
-        {
-            for (var i=0; i<_filter.schoolTypes.length; i++)
-            {
-                schoolTypesFilterList.push(_filter.schoolTypes[i].value);
-            }
-        }
-        that.displayData.objects.nysp.geometries = that.geoData.objects.nysp.geometries.filter(function (d) {
-            if((boroughFilterList.length ==0 || boroughFilterList.indexOf(parseInt(d.properties.BORONUM)) > -1) && (schoolDistrictFilterList.length ==0 || schoolDistrictFilterList.indexOf(parseInt(d.properties.GEO_DISTRI)) > -1) && (schoolTypesFilterList.length ==0 || schoolTypesFilterList.indexOf(d.properties.SCH_TYPE) > -1)) {
-                return true;
-            }
-            else{
-                return false;
-            }
-        });
-    }
+        var programTypesFilterList = [];
 
-    return that.displayData;
+        if (_filter != null) {
+            if (_filter.boroughs.length > 0) {
+                for (var i = 0; i < _filter.boroughs.length; i++) {
+                    boroughFilterList.push(parseInt(_filter.boroughs[i].value));
+                }
+            }
+            if (_filter.districts.length > 0) {
+                for (var i = 0; i < _filter.districts.length; i++) {
+                    schoolDistrictFilterList.push(parseInt(_filter.districts[i].value));
+                }
+            }
+            if (_filter.schoolTypes.length > 0) {
+                for (var i = 0; i < _filter.schoolTypes.length; i++) {
+                    schoolTypesFilterList.push(_filter.schoolTypes[i].value);
+                }
+            }
+            if (_filter.programTypes.length > 0){
+                for (var i = 0; i < _filter.programTypes.length; i++) {
+                    programTypesFilterList.push(_filter.programTypes[i].value);
+                }
+            }
+        }
+
+        if(that.activeMetricType == "boroughButton")
+        {
+            metricType = "Boroughs";
+            selectorID = "BoroCode";
+        }
+        else if(that.activeMetricType == "schoolDistrictButton")
+        {
+            metricType = "SchoolDistricts";
+            selectorID = "SchoolDist";
+        }
+        else if(that.activeMetricType == "schoolButton")
+        {
+            metricType = "Schools";
+            selectorID = "ATS_CODE";
+        }
+
+        if(that.activeMetricType == "boroughButton" || that.activeMetricType == "schoolDistrictButton") {
+            that.displayStatsData = $.map(that.statsData[metricType], function (e1) {
+                return e1;
+            });
+        }
+        else if(that.activeMetricType == "schoolButton")
+        {
+            that.displayStatsData = $.map(that.statsData[metricType], function (e1) {
+                return e1;
+            }).filter(function(d){
+                if((boroughFilterList.length ==0 || boroughFilterList.indexOf(parseInt(d.BoroughID)) > -1) && (schoolDistrictFilterList.length ==0 || schoolDistrictFilterList.indexOf(parseInt(d.GEO_DISTRI)) > -1) && (schoolTypesFilterList.length ==0 || schoolTypesFilterList.indexOf(d.SCH_TYPE) > -1) && (programTypesFilterList.length == 0 || $(programTypesFilterList).filter(d.Programs).length > 0)) {
+                    return true;
+                }
+                else{
+                    return false;
+                }
+            })
+        }
+
+    return that.displayStatsData;
 }
 
 LineVis.prototype.onFilterChange = function(filters) {
     var that = this;
 
-    //TODO: Clear brushes
-    //that.dimensions.forEach(function(p) { that.y[p].brush.clear(); })
-    console.log(filters);
     this.wrangleData(filters);
     this.updateVis();
 }
 
-//TODO: Come back and get this to work for bringing the axes back to the front
+LineVis.prototype.onButtonChange = function(params) {
+    var that = this;
+
+    that.svg.selectAll(".active").classed("active", false).style({"stroke": "steelblue"}).attr("stroke-width", 1);
+    that.activeMetricType = params.metricType;
+
+    that.wrangleData();
+    that.updateVis();
+}
+
+LineVis.prototype.clicked = function(location, fire)
+{
+    var that = this;
+
+    that.svg.selectAll(".foreground").select("." + location).moveToFront();
+
+    if(that.activeMetricType == "boroughButton")
+    {
+        if (that.svg.selectAll(".foreground").select("." + location).classed("active") == false) {
+            that.svg.selectAll(".foreground").select("." + location).classed("active", true);
+            that.svg.selectAll(".foreground").select("." + location).style({"stroke": "black"}).attr("stroke-width", 3);
+            if (fire == "line")
+            {
+                $(that.eventHandler).trigger("clickedItem", {
+                    method: "borough",
+                    schoolPoint: location,
+                    "action": true
+                });
+            }
+        }
+        else if (that.svg.selectAll(".foreground").select("." + location).classed("active") == true){
+            that.svg.selectAll(".foreground").select("." + location).classed("active", false);
+            that.svg.selectAll(".foreground").select("." + location).style({"stroke": "steelblue"}).attr("stroke-width", 1);
+            if (fire == "line") {
+                $(that.eventHandler).trigger("clickedItem", {
+                    method: "borough",
+                    schoolPoint: location,
+                    "action": false
+                });
+            }
+        }
+    }
+    else if (that.activeMetricType == "schoolDistrictButton")
+    {
+        if (that.svg.selectAll(".foreground").select("." + location).classed("active") == false) {
+            that.svg.selectAll(".foreground").select("." + location).style({"stroke": "black"}).attr("stroke-width", 3);
+            that.svg.selectAll(".foreground").select("." + location).classed("active", true);
+            if (fire == "line") {
+                $(that.eventHandler).trigger("clickedItem", {
+                    method: "district",
+                    schoolPoint: location,
+                    "action": true
+                });
+            }
+        }
+        else if (that.svg.selectAll(".foreground").select("." + location).classed("active") == true){
+            that.svg.selectAll(".foreground").select("." + location).classed("active", false);
+            that.svg.selectAll(".foreground").select("." + location).style({"stroke": "steelblue"}).attr("stroke-width", 1);
+            if (fire == "line") {
+                $(that.eventHandler).trigger("clickedItem", {
+                    method: "district",
+                    schoolPoint: location,
+                    "action": false
+                });
+            }
+        }
+    }
+    else if (that.activeMetricType == "schoolButton") {
+        if (that.svg.selectAll(".foreground").select("." + location).classed("active") == false) {
+            that.svg.selectAll(".foreground").select("." + location).style({"stroke": "black"}).attr("stroke-width", 3);
+            that.svg.selectAll(".foreground").select("." + location).classed("active", true);
+            if (fire == "line") {
+                $(that.eventHandler).trigger("clickedItem", {
+                    method: "district",
+                    schoolPoint: location,
+                    "action": true
+                });
+            }
+        }
+        else if (that.svg.selectAll(".foreground").select("." + location).classed("active") == true){
+            that.svg.selectAll(".foreground").select("." + location).classed("active", false);
+            that.svg.selectAll(".foreground").select("." + location).style({"stroke": "steelblue"}).attr("stroke-width", 1);
+            if (fire == "line") {
+                $(that.eventHandler).trigger("clickedItem", {
+                    method: "district",
+                    schoolPoint: location,
+                    "action": false
+                });
+            }
+        }
+    }
+}
+
+LineVis.prototype.hover = function(location){
+    var that = this;
+
+    if(!that.svg.selectAll(".foreground").selectAll("." + location).empty() && that.svg.selectAll(".foreground").selectAll("." + location).classed("active") == false) {
+        that.svg.selectAll(".foreground").selectAll("." + location).moveToFront().style({"stroke": "black"}).attr("stroke-width", 3);
+    }
+
+}
+
+LineVis.prototype.hoverOut = function(location){
+    var that = this;
+
+    if(!that.svg.selectAll(".foreground").selectAll("." + location).empty() && that.svg.selectAll(".foreground").selectAll("." + location).classed("active") == false) {
+        that.svg.selectAll(".foreground").selectAll("." + location).style({"stroke": "steelblue"}).attr("stroke-width", 1);
+    }
+}
+
 d3.selection.prototype.moveToFront = function () {
     return this.each(function () {
         this.parentNode.appendChild(this);

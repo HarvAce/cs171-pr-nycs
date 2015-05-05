@@ -9,11 +9,13 @@
     <link rel="stylesheet" type="text/css" href="css/bootstrap-multiselect.css">
 
     <script src="libs/d3.min.js"></script>
-    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="libs/topojson.v1.min.js"></script>
     <script src="libs/jquery-2.1.3.min.js"></script>
     <script src="libs/bootstrap.min.js" charset="utf-8"></script>
     <script src="libs/bootstrap-multiselect.js" charset="utf-8"></script>
     <script src="libs/queue.min.js" charset="utf-8"></script>
+    <script src="libs/d3.tip.v0.6.3.js"></script>
+    <script src="libs/pace.min.js"></script>
 
     <script src = "js/linevis.js"></script>
     <script src = "js/geovis.js"></script>
@@ -37,18 +39,21 @@
         .line {
             fill: none;
             stroke-width: 1.5px;
-            shape-rendering: crispEdges;
+        }
+
+        h1 a{
+            color: black;
         }
 
         .background path {
             fill: none;
             stroke: #ddd;
-            shape-rendering: crispEdges;
         }
 
         .foreground path {
             fill: none;
             stroke: steelblue;
+            cursor: pointer;
         }
 
         .brush .extent {
@@ -64,9 +69,17 @@
             shape-rendering: crispEdges;
         }
 
-        .axis text {
+        #lineVis .axis text {
             text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
             cursor: move;
+        }
+
+        .axisText{
+            font-size: 10px;
+        }
+
+        .noData{
+            text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
         }
 
         .key path {
@@ -79,40 +92,329 @@
         }
         .page-header{
             margin-top: 0px;
-        }
-        #barVis{
-            background-color:slategray;
+            margin-bottom: 0px;
+            padding-bottom: 0px;
         }
 
+        .panel{
+            margin-top: 0px;
+        }
+
+        .borough-label {
+            fill: slategray;
+            /*fill-opacity: .8;*/
+            font-size: 20px;
+            font-weight: 500;
+            text-anchor: middle;
+        }
+
+        .barTitle{
+            font-weight: bold;
+        }
+
+        .ptext{
+            padding-left: 45px;
+            padding-top: 4px;
+        }
+
+        .btext{
+            padding-left: 4px;
+            padding-top: 4px;
+        }
+
+        th{
+            background-color: #f5f5f5;
+        }
+
+        .idColumn{
+            font-weight:bold;
+            width:59px;
+        }
+
+        #barVis svg{
+            margin-left: 8px;
+        }
+
+        .xBar{
+            font-size: 10px;
+        }
+
+        /*CITATION: Codeblock below from Caged d3-tip Example
+        http://bl.ocks.org/Caged/6476579
+        */
+        .d3-tip, .d3-tip-noarrow {
+            line-height: 1;
+            padding: 6px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border-radius: 2px;
+        }
+
+        /* Creates a small triangle extender for the tooltip */
+        .d3-tip:after {
+            box-sizing: border-box;
+            display: inline;
+            font-size: 10px;
+            width: 100%;
+            line-height: 1;
+            color: rgba(0, 0, 0, 0.8);
+            content: "\25BC";
+            position: absolute;
+            text-align: center;
+        }
+
+        /* Style northward tooltips differently */
+        .d3-tip.n:after {
+            margin: -1px 0 0 0;
+            top: 100%;
+            left: 0;
+        }
+        /*CITATION END*/
+
+        /*CITATION: Codeblock below from PACE*/
+        .pace {
+          -webkit-pointer-events: none;
+          pointer-events: none;
+
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          user-select: none;
+
+          z-index: 2000;
+          position: fixed;
+          margin: auto;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 5px;
+          width: 200px;
+          background: #fff;
+          border: 1px solid black;
+
+          overflow: hidden;
+        }
+
+        .pace .pace-progress {
+          -webkit-box-sizing: border-box;
+          -moz-box-sizing: border-box;
+          -ms-box-sizing: border-box;
+          -o-box-sizing: border-box;
+          box-sizing: border-box;
+
+          -webkit-transform: translate3d(0, 0, 0);
+          -moz-transform: translate3d(0, 0, 0);
+          -ms-transform: translate3d(0, 0, 0);
+          -o-transform: translate3d(0, 0, 0);
+          transform: translate3d(0, 0, 0);
+
+          max-width: 200px;
+          position: fixed;
+          z-index: 2000;
+          display: block;
+          position: absolute;
+          top: 0;
+          right: 100%;
+          height: 100%;
+          width: 100%;
+          background: black;
+        }
+
+        .pace.pace-inactive {
+          display: none;
+        }
+        /*CITATION END*/
+
     </style>
+    <script>
+        $(function() {
+            $("#myModal").modal();
+
+            $('#myModal').on("hidden.bs.modal", function (e) {
+                $(".container").css("visibility", "visible");
+            })
+            $('#helpButton').on("click", function(e){
+                $("#myModal").modal("show");
+            })
+            $('#helpModal').on("click", function(e){
+                $("#accordion").toggle();
+            })
+
+        });
+
+    </script>
 </head>
 <body>
-<div class="container">
-<div class="page-header">
-    <h1>New York City Schools</h1>
+<div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h3 class="modal-title" id="myModalLabel">Where is the best place to send your child to school in New York City?</h3>
+            </div>
+            <div class="modal-body">
+                <p>How do you define best?  How do you define place?  How do you define school?</p>
+                <p>New York City has the largest system of schools in the United States.  New York City’s 5 boroughs are divided into 32 geographical school districts, which have 1,707 schools that serve over 1 million students.  Students in grades K-8 are assigned to a zoned school, and students in grades 9-12 have the option of applying to over 400 high schools.
+                <p>Explore the boroughs, school districts, and schools that meet your criteria.  Find your New York City school.</p>
+                <img src="img/silhouetteLarge.gif" width="868">
+                <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true" style="display: none;">
+
+
+                    <div class="panel panel-default">
+                        <div class="panel-heading" role="tab" id="hB">
+                            <h4 class="panel-title">
+                                <a class="collapsed" data-toggle="collapse" data-parent="#accordion" href="#cB">
+                                    I want to explore!  I do not know what boroughs/school districts/schools I am looking for.
+                                </a>
+                            </h4>
+                        </div>
+                        <div id="cB" class="panel-collapse collapse" role="tabpanel">
+                            <div class="panel-body">
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img class="media-object" src="img/metricgroup.gif">
+                                        </div>
+                                        <div class="media-body">
+                                            Choose to see metrics for boroughs, school districts, or schools.  You can only view metrics for one of these types at a time.  Choosing a different metric category will reset all filters and selections.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <img src="img/filtergroup.gif">
+                                    <div class="panel-body">
+                                        When the selected metric category is School, there are borough, district, level, and program multiselect filters available.  Choosing a borough will filter to only schools in that borough, choosing a district will filter to only schools in that district, choosing a level will filter to only schools at that level (elementary, middle school, high school, etc.), and choosing a program will filter to only high schools with that program (Animal Science, Engineering, etc.).  Choosing a different filter will reset all selections.
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img class="media-object" src="img/brush.gif">
+                                        </div>
+                                        <div class="media-body">
+                                            Click, drag, and let go on any of the y-axes to brush a metric of interest.  This will filter the data to only the datapoints within the brushed area.  For instance, if you are only interested in boroughs, districts, or schools with graduation rates between 45% and 55%, brush 45-55.  Setting or changing a brush will reset all selections.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-body">
+                                            Click, drag, and let go on any of the x-axis labels to reorder the axes.  This will enable you to see relationships between metrics that are next to each other.
+                                        </div>
+                                        <div class="media-right">
+                                            <img class="media-object" src="img/moveaxis.gif">
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img class="media-object" src="img/choosemetric.gif">
+                                        </div>
+                                        <div class="media-body">
+                                            Choose the metric that you would like to see on the map.  You can only see one metric on the map at a time.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-body">
+                                            Filter using the filters and brush technique on the line graph, then select items by clicking the lines in the line graph, clicking the items on the map, or selecting an item from the selection drop down.  Once you have the items selected that you wish to compare, choose the comparison metrics to view them side by side across a number of metric categories.
+                                        </div>
+                                    </div>
+                                    <img src="img/full.gif" width="800">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel panel-default">
+                        <div class="panel-heading" role="tab" id="hA">
+                            <h4 class="panel-title">
+                                <a class="collapsed" data-toggle="collapse" data-parent="#accordion" href="#cA">
+                                    I know what borough/school district/school I am looking for.
+                                </a>
+                            </h4>
+                        </div>
+                        <div id="cA" class="panel-collapse collapse" role="tabpanel">
+                            <div class="panel-body">
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img class="media-object" src="img/metricgroup.gif">
+                                        </div>
+                                        <div class="media-body">
+                                            Choose to see metrics for boroughs, school districts, or schools.  You can only view metrics for one of these types at a time.  Choosing a different metric category will reset all filters and selections.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img class="media-object" src="img/name.gif" width="350">
+                                        </div>
+                                        <div class="media-body">
+                                            Type in the borough, school district, or school names that you want to compare, and click the checkbox for each item you want to compare.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img class="media-object" src="img/metric.gif" width="350">
+                                        </div>
+                                        <div class="media-body">
+                                            Select all of the metrics you wish to compare.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="panel panel-default">
+                                    <div class="media">
+                                        <div class="media-body">
+                                            You can continue selecting items to compare up to six maximum by finding them in the dropdown or clicking the item on the map.  You can deselect them by clicking again.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+            </div>
+            <div class="modal-footer">
+                <button id="helpModal" type="button" class="btn btn-default pull-left">Help</button>
+                All data for school year 2010-2011.
+                <button id="closeModal" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
-    <div class="row equalHeight"/>
-        <div class="col-lg-8">
+<div class="container" style="visibility: hidden;">
+<div class="page-header">
+    <h1><a href="index.html">New York City Schools</a><img src="img/silhouhette.gif" style="height: 50px; float:right;"/></h1>
+</div>
+    <!--<div class="row equalHeight"/>-->
+        <div class="row">
     <div class="panel panel-default">
-        <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-filter"></span> 1. Choose your criteria</h3></div>
+        <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-filter"></span> 1. Choose your criteria <small>Click and drag on any y axis to brush a metric of interest. Click and drag an x axis label to reorder metrics.  Hover over a line to view the name of the highlighted item.</small><span id="helpButton" class="glyphicon glyphicon-question-sign pull-right" style="cursor:pointer;"></span></h3></div>
     <div class="row">
-        <div class="col-lg-12">
+        <div class="col-lg-12 ptext">
             <b>Metrics by:</b>
             <div class="btn-group" role="group" aria-label="...">
                 <button type="button" class="btn btn-default" id="boroughButton">Borough</button>
                 <button type="button" class="btn btn-default" id="schoolDistrictButton">School District</button>
                 <button type="button" class="btn btn-default" id="schoolButton">School</button>
             </div>
+            <b style="padding-left: 47px;">Hover item: </b>
+            <span id="hoverItem">None</span>
         </div>
-        <div class="col-lg-12">
+        <div id="filterBy" class="col-lg-12 ptext">
             <b>Filter by:</b>
             <div class="btn-group" role="group" aria-label="...">
-                <button type="button" class="btn btn-default disabled" style="opacity: 1;">Borough:</button>
                 <select id="boroughDropDown" multiple="multiple"></select>
-                <button type="button" class="btn btn-default disabled" style="opacity: 1;">District:</button>
                 <select id="districtDropDown" multiple="multiple"></select>
-                <button type="button" class="btn btn-default disabled" style="opacity: 1;">Level:</button>
                 <select id="schoolTypeDropDown" multiple="multiple"></select>
+                <select id="programTypeDropDown" multiple="multiple"></select>
             </div>
         </div>
         <div class="col-lg-12" id="lineVis">
@@ -120,34 +422,37 @@
     </div>
 
     </div>
+            <div class="row equalHeight">
+                <div class="col-lg-8">
     <div class="panel panel-default">
-        <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-pushpin"></span> 2. Choose your schools</h3></div>
+        <div class="panel-heading"><h3 id="choiceStep" class="panel-title"><span class="glyphicon glyphicon-pushpin"></span> 2. Choose your schools <small>Choose a metric of interest. Select from dropdown or click a school of interest (6 maximum).</small></h3></div>
     <div class="row">
-        <div class="col-lg-6">
+        <div class="col-lg-6 ptext">
             <b>Select:</b>
             <select id="schoolDropDown" multiple="multiple"></select>
         </div>
-        <div class="col-lg-2">
+        <div class="col-lg-1">
 
         </div>
-        <div class="col-lg-4">
+        <div class="col-lg-5" style="padding-top:4px;">
             <b>Metric:</b>
             <select id="metricDropDown"></select>
         </div>
-    </div>
+
     <div class="row">
-        <div class="col-lg-12" id="geoVis">
+        <div class="col-lg-8" id="geoVis">
         </div>
     </div>
         </div>
     </div>
+            </div>
         <div class="col-lg-4" id="rightColumn">
-            <div class="panel panel-default">
-                <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-stats"></span> 3. Compare schools</h3></div>
-                <b>Metrics: </b>
-                <table class="table" id="schoolTable">
+            <div class="panel panel-default" style="overflow: scroll;">
+                <div class="panel-heading"><h3 id="compareStep" class="panel-title"><span class="glyphicon glyphicon-stats"></span> 3. Compare schools <small>Choose comparison metrics.</small></h3></div>
+                <p class="btext"><b>Metrics: </b><select id="barMetricDropDown" multiple="multiple"></select></p>
+                <table class="table table-condensed" id="schoolTable">
                     <tr>
-                            <th>#</th>
+                            <th class="idColumn">#</th>
                             <th>School</th>
 
                     </tr>
@@ -155,7 +460,9 @@
                 <div id="barVis"></div>
             </div>
         </div>
-    </div>
+        </div>
+        </div>
+    <!--</div>-->
 
 </div>
 
@@ -164,14 +471,98 @@
 
         var geoData = [];
         var statsData = [];
-        //TODO: Come back and add all of the metric types here
-        var keyMetrics = [
-            {"metric": "GraduationOutcomeTotalGradPercentage"},
-            {"metric": "StudentToTeacherRatio"}
+
+        //This is all of the metadata that I compiled on the metrics for display purposes
+        //TODO: Should be refactored into its own file
+        var keyBoroughMetrics = [
+            {"metric": "EnrollmentDensitySM", "label": "Enrollment Density / SqM", delimLabel: "Enrollment Density/per SqM", "colorSpread": "sequential", "colorPath": "ascending", "colorBase": "blue", "legendCaption": "Number of Students Enrolled Per Square Mile", "formatType": "integer", "formatPrecision": 0, "textOne": "The ratio of students enrolled to borough area.", textCount: 1},
+            {"metric": "GraduationOutcomeTotalGradPercentage", "label": "Graduation Pct", delimLabel: "Graduation/Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Percentage of Students Graduated of Total Cohort (High School Seniors)", "formatType": "percentage", "formatPrecision": 1, "textOne": "The percentage of students that graduated by August", "textTwo": "of the cohort graduation year.", textCount: 2},
+            {"metric": "ClassSizeGenEdAverage", "label": "Avg Gen Ed Class Size", delimLabel: "Avg Gen Ed/Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average General Education Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all general education", "textTwo": "classes.", textCount: 2},
+            {"metric": "MathMean", "label": "Avg Math Test Score", delimLabel: "Avg Math/Test Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Average New York State Math Test Score (Grades 3-8)", "formatType": "integer", "formatPrecision": 0, "textOne": "The average NYS Math Test Score.  For Grades", "textTwo": "3-8 only.", textCount: 2},
+            {"metric": "EnglishMean", "label": "Avg English Test Score", delimLabel: "Avg English/Test Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Average New York State English Language Arts Test Score (Grades 3-8)", "formatType": "integer", "formatPrecision": 0, "textOne": "The average NYS ELA Test Score.  For Grades", "textTwo": "3-8 only.", textCount: 2},
+            {"metric": "ClassSizeSpecialEdAverage", "label": "Avg Special Ed Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Special Education Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all special education", "textTwo": "classes.", textCount: 2},
+            {"metric": "ClassSizeCTTAverage", "label": "Avg CTT Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Collaborative Team Teaching (CTT) Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all collaborative team", "textTwo": "teaching (CTT) classes.", textCount: 2},
+            {"metric": "ClassSizeGTAverage", "label": "Avg GT Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Gifted and Talented (GT) Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all gifted and talented", "textTwo": "classes.", textCount: 2},
+            {"metric": "MathLevelOnePct", "label": "Level One Math Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level One New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level One.  Students performing at this", "textThree": "level are well below proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are insufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "MathLevelTwoPct", "label": "Level Two Math Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level Two New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Two.  Students performing at this", "textThree": "level are partially proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are partial yet insufficient for the expectations at their", "textSix": "grade.", textCount: 6},
+            {"metric": "MathLevelThreePct", "label": "Level Three Math Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Three New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Three.  Students performing at this", "textThree": "level are proficient in standards for their grade and", "textFour": "have knowledge, skills, and practices that are", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "MathLevelFourPct", "label": "Level Four Math Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Four New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Four.  Students performing at this", "textThree": "level excel in standards for their grade and have", "textFour": "knowledge, skills, and practices that are more than", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelOnePct", "label": "Level One English Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level One New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level One.  Students performing at this", "textThree": "level are well below proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are insufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelTwoPct", "label": "Level Two English Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level Two New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Two.  Students performing at this", "textThree": "level are partially proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are partial yet insufficient for the expectations at their", "textSix": "grade.", textCount: 6},
+            {"metric": "EnglishLevelThreePct", "label": "Level Three English Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Three New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Three.  Students performing at this", "textThree": "level are proficient in standards for their grade and", "textFour": "have knowledge, skills, and practices that are", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelFourPct", "label": "Level Four English Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Four New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Four.  Students performing at this", "textThree": "level excel in standards for their grade and have", "textFour": "knowledge, skills, and practices that are more than", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "GraduationOutcomeStillEnrolledPercentageCohort", "label": "Did Not Graduate, Still Enrolled Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Percentage of Students Did Not Graduate, Still Enrolled of Total Cohort (High School Seniors)", "formatType": "percentage", "formatPrecision": 1, "textOne": "The percentage of students that did not graduate by", "textTwo": "August of the cohort graduation year, yet are still", "textThree": "enrolled at the school.", textCount: 3},
+            {"metric": "GraduationOutcomeDroppedOutPercentageCohort", "label": "Did Not Graduate, Dropped Out Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Percentage of Students Did Not Graduate, Dropped Out of Total Cohort (High School Seniors)", "formatType": "percentage", "formatPrecision": 1, "textOne": "The percentage of students that did not graduate by", "textTwo": "August of the cohort graduation year and dropped", "textThree": "out of the school.", textCount: 3}
+        ];
+        var keyDistrictMetrics = [
+            {"metric": "EnrollmentDensitySM", "label": "Enrollment Density / SqM", delimLabel: "Enrollment Density/per SqM", "colorSpread": "sequential", "colorPath": "ascending", "colorBase": "blue", "legendCaption": "Number of Students Enrolled Per Square Mile", "formatType": "integer", "formatPrecision": 0, "textOne": "The ratio of students enrolled to school district area.", "textTwo": "", "textThree": "", "textFour": "", "textFive": "", textCount: 1},
+            {"metric": "DistrictAttendance", "label": "Avg Attendance", delimLabel: "Avg/Attendance", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Average Attendance Percentage", "formatType": "percentage", "formatPrecision": 1, "textOne": "The average attendance rate.", textCount: 1},
+            {"metric": "ClassSizeGenEdAverage", "label": "Avg Gen Ed Class Size", delimLabel: "Avg Gen Ed/Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average General Education Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all general education", "textTwo": "classes.", textCount: 2},
+            {"metric": "MathMean", "label": "Avg Math Test Score", delimLabel: "Avg Math/Test Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Average New York State Math Test Score (Grades 3-8)", "formatType": "integer", "formatPrecision": 0, "textOne": "The average NYS Math Test Score.  For Grades", "textTwo": "3-8 only.", textCount: 2},
+            {"metric": "EnglishMean", "label": "Avg English Test Score", delimLabel: "Avg English/Test Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Average New York State English Language Arts Test Score (Grades 3-8)", "formatType": "integer", "formatPrecision": 0, "textOne": "The average NYS ELA Test Score.  For Grades", "textTwo": "3-8 only.", textCount: 2},
+            {"metric": "ClassSizeSpecialEdAverage", "label": "Avg Special Ed Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Special Education Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all special education", "textTwo": "classes.", textCount: 2},
+            {"metric": "ClassSizeCTTAverage", "label": "Avg CTT Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Collaborative Team Teaching (CTT) Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all collaborative team", "textTwo": "teaching (CTT) classes.", textCount: 2},
+            {"metric": "ClassSizeGTAverage", "label": "Avg GT Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Gifted and Talented (GT) Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all gifted and talented", "textTwo": "classes.", textCount: 2},
+            {"metric": "MathLevelOnePct", "label": "Level One Math Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level One New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level One.  Students performing at this", "textThree": "level are well below proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are insufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "MathLevelTwoPct", "label": "Level Two Math Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level Two New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Two.  Students performing at this", "textThree": "level are partially proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are partial yet insufficient for the expectations at their", "textSix": "grade.", textCount: 6},
+            {"metric": "MathLevelThreePct", "label": "Level Three Math Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Three New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Three.  Students performing at this", "textThree": "level are proficient in standards for their grade and", "textFour": "have knowledge, skills, and practices that are", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "MathLevelFourPct", "label": "Level Four Math Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Four New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Four.  Students performing at this", "textThree": "level excel in standards for their grade and have", "textFour": "knowledge, skills, and practices that are more than", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelOnePct", "label": "Level One English Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level One New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level One.  Students performing at this", "textThree": "level are well below proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are insufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelTwoPct", "label": "Level Two English Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level Two New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Two.  Students performing at this", "textThree": "level are partially proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are partial yet insufficient for the expectations at their", "textSix": "grade.", textCount: 6},
+            {"metric": "EnglishLevelThreePct", "label": "Level Three English Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Three New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Three.  Students performing at this", "textThree": "level are proficient in standards for their grade and", "textFour": "have knowledge, skills, and practices that are", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelFourPct", "label": "Level Four English Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Four New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Four.  Students performing at this", "textThree": "level excel in standards for their grade and have", "textFour": "knowledge, skills, and practices that are more than", "textFive": "sufficient for the expectations at their grade.", textCount: 5}
+        ]
+        var keySchoolMetrics = [
+            {"metric": "Location", "label": "Location", delimLabel: "Location", "textOne": "The geographical location of the school.", textCount: 1},
+            {"metric": "ProgressReportOverallScore", "label": "Progress Score", delimLabel: "Progress/Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Progress Report Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "Progress Reports grade a school based on student", "textTwo": "outcomes. The Progress Report Score is comprised", "textThree": "of Student Progress, Student Performance, School", "textFour": "Environment, and Closing the Achievement Gap", "textFive": "Additional Credit Scores.", textCount: 5},
+            {"metric": "BuildingCrimeMajorRate", "label": "Building Major Crime Rate", delimLabel: "Building Major/Crime Rate", "colorSpread": "sequential", "colorPath": "descending", "colorBase": "red", "legendCaption": "Number of Major Crimes Per School Building Enrollment", "formatType": "decimal", "formatPrecision": 5, "textOne": "Ratio of number of major crimes to registered", "textTwo": "students in the school building. It includes the most", "textThree": "serious personal and property crimes. The property", "textFour": "crimes are burglary, grand larceny and grand larceny", "textFive": "auto. The crimes against persons are murder, rape,", "textSix": "robbery and felony assault.", textCount: 6},
+            {"metric": "GraduationOutcomeTotalGradPercentage", "label": "Graduation Pct", delimLabel: "Graduation/Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Percentage of Students Graduated of Total Cohort (High School Seniors)", "formatType": "percentage", "formatPrecision": 1, "textOne": "The percentage of students that graduated by August", "textTwo": "of the cohort graduation year.", textCount: 2},
+            {"metric": "ClassSizeGenEdAverage", "label": "Avg Gen Ed Class Size", delimLabel: "Avg Gen Ed/Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average General Education Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all general education", "textTwo": "classes.", textCount: 2},
+            {"metric": "MathMean", "label": "Avg Math Test Score", delimLabel: "Avg Math/Test Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Average New York State Math Test Score (Grades 3-8)", "formatType": "integer", "formatPrecision": 0, "textOne": "The average NYS Math Test Score.  For Grades", "textTwo": "3-8 only.", textCount: 2},
+            {"metric": "EnglishMean", "label": "Avg English Test Score", delimLabel: "Avg English/Test Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Average New York State English Language Arts Test Score (Grades 3-8)", "formatType": "integer", "formatPrecision": 0, "textOne": "The average NYS English Language Arts Test Score.", "textTwo": "For Grades 3-8 only.", textCount: 2},
+            {"metric": "ProgressReportEnvironmentCategoryScore", "label": "Progress Environment Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Progress Report Environment Category Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "The Progress Report Score for the school", "textTwo": "environment. The Environment Score is based on", "textThree": "attendance and results of parent, student, and", "textFour": "teacher surveys.  15% of total Progress Report score.", textCount: 4},
+            {"metric": "ProgressReportPerformanceCategoryScore", "label": "Progress Performance Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Progress Report Performance Category Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "The Progress Report Score for the school", "textTwo": "performance.  For elementary and middle schools,", "textThree": "this is based on English and Math test scores.  For", "textFour": "high schools, this is based on graduation rate.  25%", "textFive": "of total Progress Report score.", textCount: 5},
+            {"metric": "ProgressReportProgressCategoryScore", "label": "Progress Progress Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Progress Report Progress Category Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "The Progress Report Score for the school progress.", "textTwo": "For elementary and middle schools, this is student", "textThree": "improvement on English and Math tests.  For high", "textFour": "schools, this is credit accumulation and regents", "textFive": "completion and pass rates. 60% of total score.", textCount: 5},
+            {"metric": "ProgressReportAdditionalCredit", "label": "Progress Additional Credit", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Progress Report Additional Credit", "formatType": "decimal", "formatPrecision": 1, "textOne": "The Progress Report Score for additional credit in", "textTwo": "closing the achievement gap.  Additional credit is", "textThree": "awarded for helping special education students,", "textFour": "English Language Learners, and other high need", "textFive": "students make exemplary progress.", textCount: 5},
+            {"metric": "SurveyTotalAcademicExpectationsScore", "label": "Survey Total Academic Expectations Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Total Academic Expectations Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of all", "textTwo": "stakeholder agreement that the school encourages", "textThree": "students to do their best by developing rigorous and", "textFour": "meaningful academic goals. 0 - Strongly Disagree,", "textFive": "10 - Strongly Agree.", textCount: 5},
+            {"metric": "SurveyTotalCommunicationScore", "label": "Survey Total Communication Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Total Communication Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of all", "textTwo": "stakeholder agreement that the school provides", "textThree": "information about the school's educational goals and", "textFour": "offers appropriate feedback on student learning", "textFive": "outcomes. 0 - Strongly Disagree, 10 - Strongly Agree.", textCount: 5},
+            {"metric": "SurveyTotalEngagementScore", "label": "Survey Total Engagement Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Total Engagement Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of all", "textTwo": "stakeholder agreement that they are engaged in an", "textThree": "active and vibrant partnership to promote learning.", "textFour": "0 - Strongly Disagree, 10 - Strongly Agree.", textCount: 4},
+            {"metric": "SurveyTotalSafetyRespectScore", "label": "Survey Total Safety and Respect Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Total Safety and Respect Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of all", "textTwo": "stakeholder agreement that the school ensures all", "textThree": "members of the school community feel physically and", "textFour": "emotionally secure. 0 - Strongly Disagree,", "textFive": "10 - Strongly Agree.", textCount: 5},
+            {"metric": "SurveyStudentResponseRate", "label": "Survey Student Response Rate", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Student Response Rate (Grades 6-12)", "formatType": "percentage", "formatPrecision": 0, "textOne": "The rate of student response to the NYC School", "textTwo": "Survey. Only applicable for students grades 6-12.", textCount: 2},
+            {"metric": "SurveyStudentAcademicExpectationsScore", "label": "Survey Student Academic Expectations Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Student Academic Expectations Score (Grades 6-12)", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of student", "textTwo": "agreement that the school encourages them to do", "textThree": "their best by developing rigorous and meaningful", "textFour": "academic goals. 0 - Strongly Disagree, 10 - Strongly", "textFive": "Agree.", textCount: 5},
+            {"metric": "SurveyStudentCommunicationScore", "label": "Survey Student Communication Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Student Communication Score (Grades 6-12)", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of student", "textTwo": "agreement that the school provides them information", "textThree": "about the school's educational goals and offers", "textFour": "appropriate feedback on each student's learning", "textFive": "outcomes. 0 - Strongly Disagree, 10 - Strongly Agree.", textCount: 5},
+            {"metric": "SurveyStudentEngagementScore", "label": "Survey Student Engagement Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Student Engagement Score (Grades 6-12)", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of student", "textTwo": "agreement that the students feel engaged in an active", "textThree": "and vibrant partnership to promote learning.", "textFour": "0 - Strongly Disagree, 10 - Strongly Agree.", textCount: 4},
+            {"metric": "SurveyStudentSafetyRespectScore", "label": "Survey Student Safety and Respect Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Student Safety and Respect Score (Grades 6-12)", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of student", "textTwo": "agreement that the school ensures that all members", "textThree": "of the school community feel physically and", "textFour": "emotionally secure. 0 - Strongly Disagree,", "textFive": "10 - Strongly Agree.", textCount: 5},
+            {"metric": "SurveyParentResponseRate", "label": "Survey Parent Response Rate", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Parent Response Rate", "formatType": "percentage", "formatPrecision": 0, "textOne": "The rate of parent response to the NYC School", "textTwo": "Survey.", textCount: 2},
+            {"metric": "SurveyParentAcademicExpectationsScore", "label": "Survey Parent Academic Expectations Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Parent Academic Expectations Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of parent", "textTwo": "agreement that the school develops rigorous and", "textThree": "meaningful academic goals that encourage students", "textFour": "to do their best. 0 - Strongly Disagree, 10 - Strongly", "textFive": "Agree.", textCount: 5},
+            {"metric": "SurveyParentCommunicationScore", "label": "Survey Parent Communication Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Parent Communication Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of parent", "textTwo": "agreement that the school provides them with", "textThree": "information about the school's educational goals and", "textFour": "offers appropriate feedback on student learning", "textFive": "outcomes. 0 - Strongly Disagree, 10 Strongly Agree.", textCount: 5},
+            {"metric": "SurveyParentEngagementScore", "label": "Survey Parent Engagement Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Parent Engagement Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of parent", "textTwo": "agreement that the parents feel engaged in an active", "textThree": "and vibrant partnership to promote student learning.", "textFour": "0 - Strongly Disagree, 10 - Strongly Agree.", textCount: 4},
+            {"metric": "SurveyParentSafetyRespectScore", "label": "Survey Parent Safety and Respect Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Parent Safety and Respect Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of parent", "textTwo": "agreement that the school creates a physically and", "textThree": "emotionally secure environment. 0 - Strongly", "textFour": "Disagree, 10 - Strongly Agree.", textCount: 4},
+            {"metric": "SurveyTeacherResponseRate", "label": "Survey Teacher Response Rate", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Teacher Response Rate", "formatType": "percentage", "formatPrecision": 0, "textOne": "The rate of teacher response to the NYC School", "textTwo": "Survey.", textCount: 2},
+            {"metric": "SurveyTeacherAcademicExpectationsScore", "label": "Survey Teacher Academic Expectations Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Teacher Academic Expectations Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of teacher", "textTwo": "agreement that the school develops rigorous and", "textThree": "meaningful academic goals that encourage students", "textFour": "to do their best. 0 - Strongly Disagree, 10 - Strongly", "textFive": "Agree.", textCount: 5},
+            {"metric": "SurveyTeacherCommunicationScore", "label": "Survey Teacher Communication Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Teacher Communication Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of teacher", "textTwo": "agreement that the school provides them with", "textThree": "information about the school's education goals and", "textFour": "offers appropriate feedback on student learning", "textFive": "outcomes. 0 - Strongly Disagree, 10 - Strongly Agree.", textCount: 5},
+            {"metric": "SurveyTeacherEngagementScore", "label": "Survey Teacher Engagement Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Teacher Engagement Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of teacher", "textTwo": "agreement that the teachers feel engaged in an active", "textThree": "and vibrant partnership to promote learning.", "textFour": "0 - Strongly Disagree, 10 - Strongly Agree.", textCount: 4},
+            {"metric": "SurveyTeacherSafetyRespectScore", "label": "Survey Teacher Safety and Respect Score", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Survey Teacher Safety and Respect Score", "formatType": "decimal", "formatPrecision": 1, "textOne": "For the NYC School Survey, level of teacher", "textTwo": "agreement that the school ensures that all members ", "textThree": "of the school community feel physically and", "textFour": "emotionally secure. 0 - Strongly Disagree,", "textFive": "10 - Strongly Agree.", textCount: 5},
+            {"metric": "ClassSizeSpecialEdAverage", "label": "Avg Special Ed Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Special Education Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all special education", "textTwo": "classes.", textCount: 2},
+            {"metric": "ClassSizeCTTAverage", "label": "Avg CTT Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Collaborative Team Teaching (CTT) Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all collaborative team", "textTwo": "teaching (CTT) classes.", textCount: 2},
+            {"metric": "ClassSizeGTAverage", "label": "Avg GT Class Size", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Average Gifted and Talented (GT) Class Size", "formatType": "decimal", "formatPrecision": 1, "textOne": "The average class size for all gifted and talented", "textTwo": "classes.", textCount: 2},
+            {"metric": "BuildingCrimeNoncriminalRate", "label": "Building Noncriminal Crime Rate", "colorSpread": "sequential", "colorPath": "descending", "colorBase": "red", "legendCaption": "Number of Noncriminal Crimes Per School Building Enrollment", "formatType": "decimal", "formatPrecision": 5, "textOne": "Ratio of number of non-criminal incidents to", "textTwo": "registered students in the school building.  This", "textThree": "category includes actions which are not classified as", "textFour": "crimes but are nevertheless disruptive to the school", "textFive": "environment. It includes disorderly conduct,", "textSix": "harassment, loitering, possession of marijuana,", "textSeven": "dangerous instruments and trespass.", textCount: 7},
+            {"metric": "BuildingCrimeOtherRate", "label": "Building Other Crime Rate", "colorSpread": "sequential", "colorPath": "descending", "colorBase": "red", "legendCaption": "Number of Other Crimes Per School Building Enrollment", "formatType": "decimal", "formatPrecision": 5, "textOne": "Ratio of number of other crimes to registered", "textTwo": "students in the school building.  This category is", "textThree": "composed of many crimes and incidents that range in", "textFour": "severity. It includes reports of incidents such as", "textFive": "arson/explosion, misdemeanor assault, criminal", "textSix": "possession or sale of a controlled substance, sale of", "textSeven": "marijuana, criminal mischief, petit larceny, reckless", "textEight": "endangerment, sex offenses (not including rape),", "textNine": "and weapons possession.", textCount: 9},
+            {"metric": "MathLevelOnePct", "label": "Level One Math Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level One New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level One.  Students performing at this", "textThree": "level are well below proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are insufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "MathLevelTwoPct", "label": "Level Two Math Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level Two New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Two.  Students performing at this", "textThree": "level are partially proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are partial yet insufficient for the expectations at their", "textSix": "grade.", textCount: 6},
+            {"metric": "MathLevelThreePct", "label": "Level Three Math Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Three New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Three.  Students performing at this", "textThree": "level are proficient in standards for their grade and", "textFour": "have knowledge, skills, and practices that are", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "MathLevelFourPct", "label": "Level Four Math Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Four New York State Math Test Score Percentage (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS Math Test, the percentage of students", "textTwo": "performing at Level Four.  Students performing at this", "textThree": "level excel in standards for their grade and have", "textFour": "knowledge, skills, and practices that are more than", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelOnePct", "label": "Level One English Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level One New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level One.  Students performing at this", "textThree": "level are well below proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are insufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelTwoPct", "label": "Level Two English Test Score Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Level Two New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Two.  Students performing at this", "textThree": "level are partially proficient in standards for their", "textFour": "grade and have knowledge, skills, and practices that", "textFive": "are partial yet insufficient for the expectations at their", "textSix": "grade.", textCount: 6},
+            {"metric": "EnglishLevelThreePct", "label": "Level Three English Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Three New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Three.  Students performing at this", "textThree": "level are proficient in standards for their grade and", "textFour": "have knowledge, skills, and practices that are", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "EnglishLevelFourPct", "label": "Level Four English Test Score Pct", "colorSpread": "divergent", "colorPath": "ascending", "legendCaption": "Level Four New York State English Language Arts Test Score (Grades 3-8)", "formatType": "percentage", "formatPrecision": 1, "textOne": "For the NYS ELA Test, the percentage of students", "textTwo": "performing at Level Four.  Students performing at this", "textThree": "level excel in standards for their grade and have", "textFour": "knowledge, skills, and practices that are more than", "textFive": "sufficient for the expectations at their grade.", textCount: 5},
+            {"metric": "GraduationOutcomeStillEnrolledPercentageCohort", "label": "Did Not Graduate, Still Enrolled Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Percentage of Students Did Not Graduate, Still Enrolled of Total Cohort (High School Seniors)", "formatType": "percentage", "formatPrecision": 1, "textOne": "The percentage of students that did not graduate by", "textTwo": "August of the cohort graduation year, yet are still", "textThree": "enrolled at the school.", textCount: 3},
+            {"metric": "GraduationOutcomeDroppedOutPercentageCohort", "label": "Did Not Graduate, Dropped Out Pct", "colorSpread": "divergent", "colorPath": "descending", "legendCaption": "Percentage of Students Did Not Graduate, Dropped Out of Total Cohort (High School Seniors)", "formatType": "percentage", "formatPrecision": 1, "textOne": "The percentage of students that did not graduate by", "textTwo": "August of the cohort graduation year and dropped", "textThree": "out of the school.", textCount: 3}
         ];
 
         var startHere = function(){
 
+            //Load the geoData and statsData
             queue()
                     .defer(d3.json, "data/nycs.json")
                     .defer(d3.json, "data/nycsa.json")
@@ -189,6 +580,38 @@
 
                 statsData = _statsData;
 
+                //statsData needs to be loaded into the geoData for the map display
+                //A few geoData points need to be loaded into the statsData
+                for (var item in geoData.objects.nybb.geometries)
+                {
+                    var boroughID = geoData.objects.nybb.geometries[item].properties.BoroCode;
+
+                    geoData.objects.nybb.geometries[item].properties.EnrollmentDensitySM = statsData.Boroughs[boroughID].EnrollmentDensitySM;
+
+                    geoData.objects.nybb.geometries[item].properties.GraduationOutcomeTotalGradPercentage = statsData.Boroughs[boroughID].GraduationOutcomeTotalGradPercentage;
+                    geoData.objects.nybb.geometries[item].properties.GraduationOutcomeStillEnrolledPercentageCohort = statsData.Boroughs[boroughID].GraduationOutcomeStillEnrolledPercentageCohort;
+                    geoData.objects.nybb.geometries[item].properties.GraduationOutcomeDroppedOutPercentageCohort = statsData.Boroughs[boroughID].GraduationOutcomeDroppedOutPercentageCohort;
+
+                    geoData.objects.nybb.geometries[item].properties.MathMean = statsData.Boroughs[boroughID].MathMean;
+                    geoData.objects.nybb.geometries[item].properties.MathLevelOnePct = statsData.Boroughs[boroughID].MathLevelOnePct;
+                    geoData.objects.nybb.geometries[item].properties.MathLevelTwoPct = statsData.Boroughs[boroughID].MathLevelTwoPct;
+                    geoData.objects.nybb.geometries[item].properties.MathLevelThreePct = statsData.Boroughs[boroughID].MathLevelThreePct;
+                    geoData.objects.nybb.geometries[item].properties.MathLevelFourPct = statsData.Boroughs[boroughID].MathLevelFourPct;
+
+                    geoData.objects.nybb.geometries[item].properties.EnglishMean = statsData.Boroughs[boroughID].EnglishMean;
+                    geoData.objects.nybb.geometries[item].properties.EnglishLevelOnePct = statsData.Boroughs[boroughID].EnglishLevelOnePct;
+                    geoData.objects.nybb.geometries[item].properties.EnglishLevelTwoPct = statsData.Boroughs[boroughID].EnglishLevelTwoPct;
+                    geoData.objects.nybb.geometries[item].properties.EnglishLevelThreePct = statsData.Boroughs[boroughID].EnglishLevelThreePct;
+                    geoData.objects.nybb.geometries[item].properties.EnglishLevelFourPct = statsData.Boroughs[boroughID].EnglishLevelFourPct;
+
+                    geoData.objects.nybb.geometries[item].properties.ClassSizeGenEdAverage = statsData.Boroughs[boroughID].ClassSizeGenEdAverage;
+                    geoData.objects.nybb.geometries[item].properties.ClassSizeSpecialEdAverage = statsData.Boroughs[boroughID].ClassSizeSpecialEdAverage;
+                    geoData.objects.nybb.geometries[item].properties.ClassSizeGTAverage = statsData.Boroughs[boroughID].ClassSizeGTAverage;
+                    geoData.objects.nybb.geometries[item].properties.ClassSizeCTTAverage = statsData.Boroughs[boroughID].ClassSizeCTTAverage;
+
+                    statsData.Boroughs[boroughID].BoroName = geoData.objects.nybb.geometries[item].properties.BoroName;
+
+                }
                 for (var item in geoData.objects.nysd.geometries)
                 {
                     var schoolDistrictID = geoData.objects.nysd.geometries[item].properties.SchoolDist;
@@ -197,13 +620,31 @@
                     geoData.objects.nysd.geometries[item].properties.DistrictAttendance = statsData.SchoolDistricts[schoolDistrictID].DistrictAttendance;
 
                     //Enrollment Data
-                    geoData.objects.nysd.geometries[item].properties.DistrictEnrollment = statsData.SchoolDistricts[schoolDistrictID].DistrictEnrollment;
+                    geoData.objects.nysd.geometries[item].properties.EnrollmentDensitySM = statsData.SchoolDistricts[schoolDistrictID].EnrollmentDensitySM;
+
+                    geoData.objects.nysd.geometries[item].properties.MathMean = statsData.SchoolDistricts[schoolDistrictID].MathMean;
+                    geoData.objects.nysd.geometries[item].properties.MathLevelOnePct = statsData.SchoolDistricts[schoolDistrictID].MathLevelOnePct;
+                    geoData.objects.nysd.geometries[item].properties.MathLevelTwoPct = statsData.SchoolDistricts[schoolDistrictID].MathLevelTwoPct;
+                    geoData.objects.nysd.geometries[item].properties.MathLevelThreePct = statsData.SchoolDistricts[schoolDistrictID].MathLevelThreePct;
+                    geoData.objects.nysd.geometries[item].properties.MathLevelFourPct = statsData.SchoolDistricts[schoolDistrictID].MathLevelFourPct;
+
+                    geoData.objects.nysd.geometries[item].properties.EnglishMean = statsData.SchoolDistricts[schoolDistrictID].EnglishMean;
+                    geoData.objects.nysd.geometries[item].properties.EnglishLevelOnePct = statsData.SchoolDistricts[schoolDistrictID].EnglishLevelOnePct;
+                    geoData.objects.nysd.geometries[item].properties.EnglishLevelTwoPct = statsData.SchoolDistricts[schoolDistrictID].EnglishLevelTwoPct;
+                    geoData.objects.nysd.geometries[item].properties.EnglishLevelThreePct = statsData.SchoolDistricts[schoolDistrictID].EnglishLevelThreePct;
+                    geoData.objects.nysd.geometries[item].properties.EnglishLevelFourPct = statsData.SchoolDistricts[schoolDistrictID].EnglishLevelFourPct;
+
+                    geoData.objects.nysd.geometries[item].properties.ClassSizeGenEdAverage = statsData.SchoolDistricts[schoolDistrictID].ClassSizeGenEdAverage;
+                    geoData.objects.nysd.geometries[item].properties.ClassSizeSpecialEdAverage = statsData.SchoolDistricts[schoolDistrictID].ClassSizeSpecialEdAverage;
+                    geoData.objects.nysd.geometries[item].properties.ClassSizeGTAverage = statsData.SchoolDistricts[schoolDistrictID].ClassSizeGTAverage;
+                    geoData.objects.nysd.geometries[item].properties.ClassSizeCTTAverage = statsData.SchoolDistricts[schoolDistrictID].ClassSizeCTTAverage;
 
                 }
 
                 for (var item in geoData.objects.nysp.geometries)
                 {
                     var schoolID = geoData.objects.nysp.geometries[item].properties.ATS_CODE;
+                    geoData.objects.nysp.geometries[item].properties.BoroughID = statsData.Schools[schoolID].BoroughID;
 
                     //Graduation Outcome Data
                     //Graduation Metric - Total Graduation Percentage of Cohort
@@ -218,31 +659,24 @@
                     geoData.objects.nysp.geometries[item].properties.QualityScore = statsData.Schools[schoolID].QualityScore;
 
                     //Safety Data
-                    geoData.objects.nysp.geometries[item].properties.HasSafetyData = statsData.Schools[schoolID].HasSafetyData;
-                    geoData.objects.nysp.geometries[item].properties.MajorCount = statsData.Schools[schoolID].MajorCount;
-                    geoData.objects.nysp.geometries[item].properties.NoCrimCount = statsData.Schools[schoolID].NoCrimCount;
-                    geoData.objects.nysp.geometries[item].properties.OtherCount = statsData.Schools[schoolID].OtherCount;
-                    geoData.objects.nysp.geometries[item].properties.VioCount = statsData.Schools[schoolID].VioCount;
-                    geoData.objects.nysp.geometries[item].properties.PropCount = statsData.Schools[schoolID].PropCount;
-                    geoData.objects.nysp.geometries[item].properties.RangeA = statsData.Schools[schoolID].RangeA;
-                    geoData.objects.nysp.geometries[item].properties.Register = statsData.Schools[schoolID].Register;
-                    geoData.objects.nysp.geometries[item].properties.BuildingCode = statsData.Schools[schoolID].BuildingCode;
-                    geoData.objects.nysp.geometries[item].properties.ENGroupA = statsData.Schools[schoolID].ENGroupA;
-
+                    geoData.objects.nysp.geometries[item].properties.BuildingCrimeMajorRate = statsData.Schools[schoolID].BuildingCrimeMajorRate;
+                    geoData.objects.nysp.geometries[item].properties.BuildingCrimeOtherRate = statsData.Schools[schoolID].BuildingCrimeOtherRate;
+                    geoData.objects.nysp.geometries[item].properties.BuildingCrimeNoncriminalRate = statsData.Schools[schoolID].BuildingCrimeNoncriminalRate;
 
                     //Progress Report Data
                     geoData.objects.nysp.geometries[item].properties.ProgressReportAdditionalCredit = statsData.Schools[schoolID].ProgressReportAdditionalCredit;
                     geoData.objects.nysp.geometries[item].properties.ProgressReportEnvironmentCategoryScore = statsData.Schools[schoolID].ProgressReportEnvironmentCategoryScore;
-                    //Progress Report Metric - Overall Grade
-                    geoData.objects.nysp.geometries[item].properties.ProgressReportOverallGrade = statsData.Schools[schoolID].ProgressReportOverallGrade;
+                    //Progress Report Metric - Overall Score
                     geoData.objects.nysp.geometries[item].properties.ProgressReportOverallScore = statsData.Schools[schoolID].ProgressReportOverallScore;
                     geoData.objects.nysp.geometries[item].properties.ProgressReportPerformanceCategoryScore = statsData.Schools[schoolID].ProgressReportPerformanceCategoryScore;
                     geoData.objects.nysp.geometries[item].properties.ProgressReportProgressCategoryScore = statsData.Schools[schoolID].ProgressReportProgressCategoryScore;
 
 
                     //Class Size Data
-                    //Class Size Metric - Student to Teacher Ratio
-                    geoData.objects.nysp.geometries[item].properties.StudentToTeacherRatio = statsData.Schools[schoolID].StudentToTeacherRatio;
+                    geoData.objects.nysp.geometries[item].properties.ClassSizeGenEdAverage = statsData.Schools[schoolID].ClassSizeGenEdAverage;
+                    geoData.objects.nysp.geometries[item].properties.ClassSizeSpecialEdAverage = statsData.Schools[schoolID].ClassSizeSpecialEdAverage;
+                    geoData.objects.nysp.geometries[item].properties.ClassSizeGTAverage = statsData.Schools[schoolID].ClassSizeGTAverage;
+                    geoData.objects.nysp.geometries[item].properties.ClassSizeCTTAverage = statsData.Schools[schoolID].ClassSizeCTTAverage;
 
 
                     //Survey Data
@@ -271,78 +705,410 @@
                     //Survey Metric - Total Safety Respect Score
                     geoData.objects.nysp.geometries[item].properties.SurveyTotalSafetyRespectScore = statsData.Schools[schoolID].SurveyTotalSafetyRespectScore;
 
+                    //Math Data
+                    geoData.objects.nysp.geometries[item].properties.MathMean = statsData.Schools[schoolID].MathMean;
+                    geoData.objects.nysp.geometries[item].properties.MathLevelOnePct = statsData.Schools[schoolID].MathLevelOnePct;
+                    geoData.objects.nysp.geometries[item].properties.MathLevelTwoPct = statsData.Schools[schoolID].MathLevelTwoPct;
+                    geoData.objects.nysp.geometries[item].properties.MathLevelThreePct = statsData.Schools[schoolID].MathLevelThreePct;
+                    geoData.objects.nysp.geometries[item].properties.MathLevelFourPct = statsData.Schools[schoolID].MathLevelFourPct;
+
+                    //English Data
+                    geoData.objects.nysp.geometries[item].properties.EnglishMean = statsData.Schools[schoolID].EnglishMean;
+                    geoData.objects.nysp.geometries[item].properties.EnglishLevelOnePct = statsData.Schools[schoolID].EnglishLevelOnePct;
+                    geoData.objects.nysp.geometries[item].properties.EnglishLevelTwoPct = statsData.Schools[schoolID].EnglishLevelTwoPct;
+                    geoData.objects.nysp.geometries[item].properties.EnglishLevelThreePct = statsData.Schools[schoolID].EnglishLevelThreePct;
+                    geoData.objects.nysp.geometries[item].properties.EnglishLevelFourPct = statsData.Schools[schoolID].EnglishLevelFourPct;
+
+                    //Programs
+                    geoData.objects.nysp.geometries[item].properties.Programs = statsData.Schools[schoolID].Programs;
+
+                    statsData.Schools[schoolID].SCHOOLNAME = geoData.objects.nysp.geometries[item].properties.SCHOOLNAME;
+                    statsData.Schools[schoolID].SCH_TYPE = geoData.objects.nysp.geometries[item].properties.SCH_TYPE;
+                    statsData.Schools[schoolID].GEO_DISTRI = geoData.objects.nysp.geometries[item].properties.GEO_DISTRI;
+
                 }
 
-                //TODO: This is the code to calculate thresholds and create scales for all of the metrics.  Finish implementing, then update barvis, geovis, and linevis
-                for (var item in keyMetrics)
+                //This is the code to calculate thresholds and create scales for all of the metrics.
+                for (var item in keyBoroughMetrics)
                 {
                     var dataSortedAndFiltered = [];
 
-                    //TODO: Come back and fix this because this isn't sorting numerically right now
-                    dataSortedAndFiltered = geoData.objects.nysp.geometries.filter(function (d) {
-                        return d.properties[keyMetrics[item].metric] != "" && d.properties[keyMetrics[item].metric] != 0 && d.properties[keyMetrics[item].metric] != null;
-                    }).sort(function (a, b) {
-                        return parseFloat(a.properties[keyMetrics[item].metric]) > parseFloat(b.properties[keyMetrics[item].metric]);
-                    }).map(function (d) {
-                        return d.properties[keyMetrics[item].metric];
-                    });
+                    var metricItem = keyBoroughMetrics[item].metric;
 
-                    keyMetrics[item].TwentyFive = d3.quantile(dataSortedAndFiltered, .25);
-                    keyMetrics[item].Fifty = d3.quantile(dataSortedAndFiltered, .5);
-                    keyMetrics[item].SeventyFive = d3.quantile(dataSortedAndFiltered, .75);
-                    keyMetrics[item].Min = d3.min(geoData.objects.nysp.geometries.filter(function(a){
-                        return a.properties[keyMetrics[item].metric] != "" && a.properties[keyMetrics[item].metric] != null && a.properties[keyMetrics[item].metric] != 0;
-                    }), function(p) { return p.properties[keyMetrics[item].metric]; })-1;
-                    keyMetrics[item].Max = d3.max(geoData.objects.nysp.geometries.filter(function(a){
-                        return a.properties[keyMetrics[item].metric] != "" && a.properties[keyMetrics[item].metric] != null && a.properties[keyMetrics[item].metric] != 0;
-                    }), function(p) { return p.properties[keyMetrics[item].metric]; });
-                    keyMetrics[item].Scale = d3.scale.linear().domain([keyMetrics[item].Min, keyMetrics[item].Max]);
+                        dataSortedAndFiltered = geoData.objects.nybb.geometries.filter(function (d) {
+                            return d.properties[metricItem] != "" && d.properties[metricItem] != 0 && d.properties[metricItem] != null;
+                        })
+                                .map(function (d) {
+                                    return parseFloat(d.properties[metricItem]);
+                                })
+                                .sort(d3.ascending);
+
+                        keyBoroughMetrics[item].TwentyFive = d3.quantile(dataSortedAndFiltered, .25);
+                        keyBoroughMetrics[item].Fifty = d3.quantile(dataSortedAndFiltered, .5);
+                        keyBoroughMetrics[item].SeventyFive = d3.quantile(dataSortedAndFiltered, .75);
+                        keyBoroughMetrics[item].Min = d3.min(geoData.objects.nybb.geometries.filter(function (a) {
+                            return a.properties[metricItem] != "" && a.properties[metricItem] != null;
+                        }), function (p) {
+                            return p.properties[metricItem];
+                        });
+                        keyBoroughMetrics[item].Max = d3.max(geoData.objects.nybb.geometries.filter(function (a) {
+                            return a.properties[metricItem] != "" && a.properties[metricItem] != null;
+                        }), function (p) {
+                            return p.properties[metricItem];
+                        });
+                        keyBoroughMetrics[item].Scale = d3.scale.linear().domain([keyBoroughMetrics.Min, keyBoroughMetrics.Max]);
+
+                }
+                for (var item in keyDistrictMetrics)
+                {
+                    var dataSortedAndFiltered = [];
+
+                    var metricItem = keyDistrictMetrics[item].metric;
+
+                        dataSortedAndFiltered = geoData.objects.nysd.geometries.filter(function (d) {
+                            return d.properties[metricItem] != "" && d.properties[metricItem] != 0 && d.properties[metricItem] != null;
+                        })
+                                .map(function (d) {
+                                    return parseFloat(d.properties[metricItem]);
+                                })
+                                .sort(d3.ascending);
+
+                        keyDistrictMetrics[item].TwentyFive = d3.quantile(dataSortedAndFiltered, .25);
+                        keyDistrictMetrics[item].Fifty = d3.quantile(dataSortedAndFiltered, .5);
+                        keyDistrictMetrics[item].SeventyFive = d3.quantile(dataSortedAndFiltered, .75);
+                        keyDistrictMetrics[item].Min = d3.min(geoData.objects.nysd.geometries.filter(function (a) {
+                            return a.properties[metricItem] != "" && a.properties[metricItem] != null;
+                        }), function (p) {
+                            return p.properties[metricItem];
+                        });
+                        keyDistrictMetrics[item].Max = d3.max(geoData.objects.nysd.geometries.filter(function (a) {
+                            return a.properties[metricItem] != "" && a.properties[metricItem] != null;
+                        }), function (p) {
+                            return p.properties[metricItem];
+                        });
+                        keyDistrictMetrics[item].Scale = d3.scale.linear().domain([keyDistrictMetrics.Min, keyDistrictMetrics.Max]);
+
+                }
+                for (var item in keySchoolMetrics)
+                {
+                    var dataSortedAndFiltered = [];
+
+                    var metricItem = keySchoolMetrics[item].metric;
+
+                    if(metricItem != "Location") {
+                        dataSortedAndFiltered = geoData.objects.nysp.geometries.filter(function (d) {
+                            return d.properties[metricItem] != "" && d.properties[metricItem] != 0 && d.properties[metricItem] != null;
+                        })
+                                .map(function (d) {
+                                    return parseFloat(d.properties[metricItem]);
+                                })
+                                .sort(d3.ascending);
+
+                        keySchoolMetrics[item].TwentyFive = d3.quantile(dataSortedAndFiltered, .25);
+                        keySchoolMetrics[item].Fifty = d3.quantile(dataSortedAndFiltered, .5);
+                        keySchoolMetrics[item].SeventyFive = d3.quantile(dataSortedAndFiltered, .75);
+                        keySchoolMetrics[item].Min = d3.min(geoData.objects.nysp.geometries.filter(function (a) {
+                            return a.properties[metricItem] != "" && a.properties[metricItem] != null;
+                        }), function (p) {
+                            return p.properties[metricItem];
+                        });
+                        keySchoolMetrics[item].Max = d3.max(geoData.objects.nysp.geometries.filter(function (a) {
+                            return a.properties[metricItem] != "" && a.properties[metricItem] != null;
+                        }), function (p) {
+                            return p.properties[metricItem];
+                        });
+                        keySchoolMetrics[item].Scale = d3.scale.linear().domain([keySchoolMetrics.Min, keySchoolMetrics.Max]);
+                    }
                 }
 
-                console.log(geoData);
-                console.log(statsData);
-                console.log(dataSortedAndFiltered);
                 initVis();
             }
         }
 
         var initVis = function(){
 
+            //Repopulates the select dropdwon when metric type changes
+            function updateSelectList()
+            {
+                var boroughFilterList = [];
+                var schoolDistrictFilterList = [];
+                var schoolTypesFilterList = [];
+                var programTypesFilterList = [];
+
+                if ($('#boroughDropDown option:selected') != null && $('#boroughDropDown option:selected').length > 0) {
+                    for (var i = 0; i < $('#boroughDropDown option:selected').length; i++) {
+                        boroughFilterList.push(parseInt($('#boroughDropDown option:selected')[i].value));
+                    }
+                }
+                if ($('#districtDropDown option:selected') != null && $('#districtDropDown option:selected').length > 0) {
+                    for (var i = 0; i < $('#districtDropDown option:selected').length; i++) {
+                        schoolDistrictFilterList.push(parseInt($('#districtDropDown option:selected')[i].value));
+                    }
+                }
+                if ($('#schoolTypeDropDown option:selected') && $('#schoolTypeDropDown option:selected').length > 0) {
+                    for (var i = 0; i < $('#schoolTypeDropDown option:selected').length; i++) {
+                        schoolTypesFilterList.push($('#schoolTypeDropDown option:selected')[i].value);
+                    }
+                }
+                if ($('#programTypeDropDown option:selected') != null && $('#programTypeDropDown option:selected').length > 0) {
+                    for (var i = 0; i < $('#programTypeDropDown option:selected').length; i++) {
+                        programTypesFilterList.push($('#programTypeDropDown option:selected')[i].value);
+                    }
+                }
+
+                var newSelectData = [];
+
+                newSelectData = geoData.objects.nysp.geometries.filter(function (d) {
+                    if ((boroughFilterList.length == 0 || boroughFilterList.indexOf(parseInt(d.properties.BORONUM)) > -1) && (schoolDistrictFilterList.length == 0 || schoolDistrictFilterList.indexOf(parseInt(d.properties.GEO_DISTRI)) > -1) && (schoolTypesFilterList.length == 0 || schoolTypesFilterList.indexOf(d.properties.SCH_TYPE) > -1) && (programTypesFilterList.length == 0 || $(programTypesFilterList).filter(d.properties.Programs).length > 0)) {
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                }).map(function(d){
+                    return {"label": d.properties.SCHOOLNAME, "value": "S" + d.properties.ATS_CODE};
+                }).sort(function(a, b){
+                    return a.label < b.label ? -1 : a.label > b.label ? 1 : a.label >= b.label ? 0 : NaN;
+                });;
+
+                $("#schoolDropDown").multiselect("dataprovider", newSelectData);
+            }
+
+            //Clears the table of selected data points
+            function resetTable()
+            {
+                d3.select("#schoolTable").selectAll("tr").remove();
+                if($('.btn-group > .btn.active')[0].id == "boroughButton") {
+                    var row = d3.select("#schoolTable").select("tbody").append("tr");
+                    row.append("th").text("#").classed("idColumn", true);
+                    row.append("th").text("Borough");
+                }
+                else if($('.btn-group > .btn.active')[0].id == "schoolDistrictButton") {
+                    var row = d3.select("#schoolTable").select("tbody").append("tr");
+                    row.append("th").text("#").classed("idColumn", true);
+                    row.append("th").text("District");
+                }
+                else if($('.btn-group > .btn.active')[0].id == "schoolButton") {
+                    var row = d3.select("#schoolTable").select("tbody").append("tr");
+                    row.append("th").text("#").classed("idColumn", true);
+                    row.append("th").text("School");
+                }
+            }
+
             var myEventHandler = new Object();
 
-            var geo_vis = new GeoVis(d3.select("#geoVis"), geoData, myEventHandler);
-            var line_vis = new LineVis(d3.select("#lineVis"), geoData, myEventHandler);
-            var bar_vis = new BarVis(d3.select("#barVis"), geoData, keyMetrics, myEventHandler);
+            var keyMetricsList = {"boroughButton": keyBoroughMetrics, "schoolDistrictButton": keyDistrictMetrics, "schoolButton": keySchoolMetrics};
 
+            var geo_vis = new GeoVis(d3.select("#geoVis"), geoData, keyMetricsList, myEventHandler);
+            var line_vis = new LineVis(d3.select("#lineVis"), geoData, keyMetricsList, statsData, myEventHandler);
+            var bar_vis = new BarVis(d3.select("#barVis"), keyMetricsList, statsData, myEventHandler);
+
+            //This is the event on brush
             $(myEventHandler).bind("selectionChanged", function(eventType, eventParameters){
+                resetTable();
+
                 geo_vis.onSelectionChange(eventParameters);
+                bar_vis.onSelectionChange(eventParameters);
+
+                var newSelectData = [];
+
+                if($('.btn-group > .btn.active')[0].id == "boroughButton"){
+                    newSelectData = geoData.objects.nybb.geometries.map(function (d) {
+                        return {"label": d.properties.BoroName, "value": "B" + d.properties.BoroCode};
+                    }).filter(function (d) {
+                        return eventParameters.schools.indexOf(d.value) > -1;
+                    }).sort(function(a, b){
+                        return a.label < b.label ? -1 : a.label > b.label ? 1 : a.label >= b.label ? 0 : NaN;
+                    });;
+                }
+                else if($('.btn-group > .btn.active')[0].id == "schoolDistrictButton"){
+                    newSelectData = geoData.objects.nysd.geometries.map(function (d) {
+                        return {"label": d.properties.SchoolDist, "value": "D" + d.properties.SchoolDist};
+                    }).filter(function (d) {
+                        return eventParameters.schools.indexOf(d.value) > -1;
+                    }).sort(function(a, b){
+                        return a.label < b.label ? -1 : a.label > b.label ? 1 : a.label >= b.label ? 0 : NaN;
+                    });;
+                }
+                else if($('.btn-group > .btn.active')[0].id == "schoolButton") {
+                    newSelectData = geoData.objects.nysp.geometries.map(function (d) {
+                        return {"label": d.properties.SCHOOLNAME, "value": "S" + d.properties.ATS_CODE};
+                    }).filter(function (d) {
+                        return eventParameters.schools.indexOf(d.value) > -1;
+                    }).sort(function(a, b){
+                        return a.label < b.label ? -1 : a.label > b.label ? 1 : a.label >= b.label ? 0 : NaN;
+                    });;
+                }
+
+                $("#schoolDropDown").multiselect("dataprovider", newSelectData);
             })
 
+            //Event on click of a lineVis line
+            $(myEventHandler).bind("clickedItem", function(eventType, eventParameters) {
+                    geo_vis.clicked(eventParameters.schoolPoint);
+            })
+
+            //Event on click of a geoVis point
+            $(myEventHandler).bind("clickedGeo", function(eventType, eventParameters){
+                    line_vis.clicked(eventParameters.schoolPoint, "geo");
+            })
+
+            //Event on hover of a lineVis line
+            $(myEventHandler).bind("hoverLine", function(eventType, eventParameters) {
+                geo_vis.hover(eventParameters.schoolPoint);
+            });
+
+            //Event on mouseout of a lineVis line
+            $(myEventHandler).bind("hoverLineOut", function(eventType, eventParameters) {
+                geo_vis.hoverOut(eventParameters.schoolPoint);
+            });
+
+            //Event on hover of a geoVis point
+            $(myEventHandler).bind("hoverMap", function(eventType, eventParameters) {
+                line_vis.hover(eventParameters.schoolPoint);
+            });
+
+            //Event on mouseout of a geoVis point
+            $(myEventHandler).bind("hoverMapOut", function(eventType, eventParameters) {
+                line_vis.hoverOut(eventParameters.schoolPoint);
+            });
+
+            //Event on click of geoVis points
             $(myEventHandler).bind("clicked", function(eventType, eventParameters){
 
-                var clickedSchool = geoData.objects.nysp.geometries.filter(function(d){
-                    return "S" + d.properties.ATS_CODE == eventParameters.schoolPoint;
-                });
-
-                console.log(clickedSchool);
-
-                if(eventParameters.action == true)
-                {
-                    var row = d3.select("#schoolTable").append("tr").classed(eventParameters.schoolPoint, true);
-                    row.append("td").text(clickedSchool[0].properties.ATS_CODE);
-                    row.append("td").text(clickedSchool[0].properties.SCHOOLNAME);
+                if(eventParameters.action == true) {
+                    $("#schoolDropDown").multiselect("select", eventParameters.schoolPoint, false);
                 }
                 else
                 {
-                    d3.select("#schoolTable").select("." + eventParameters.schoolPoint).remove();
+                    $("#schoolDropDown").multiselect("deselect", eventParameters.schoolPoint, false);
+                }
+
+                if(eventParameters.method == "borough"){
+                    var clickedSchool = statsData.Boroughs[eventParameters.schoolPoint.slice(1)];
+
+                    if (eventParameters.action == true) {
+                        var row = d3.select("#schoolTable").select("tbody").append("tr").classed(eventParameters.schoolPoint, true);
+                        row.append("td").text(clickedSchool.BoroCode).classed("idColumn", true);
+                        row.append("td").text(clickedSchool.BoroName);
+                    }
+                    else {
+                        d3.select("#schoolTable").select("." + eventParameters.schoolPoint).remove();
+                    }
+                }
+                else if(eventParameters.method == "district"){
+                    var clickedSchool = statsData.SchoolDistricts[eventParameters.schoolPoint.slice(1)];
+
+                    if (eventParameters.action == true) {
+                        var row = d3.select("#schoolTable").select("tbody").append("tr").classed(eventParameters.schoolPoint, true);
+                        row.append("td").text(clickedSchool.SchoolDist).classed("idColumn", true);
+                        row.append("td").text("District " + clickedSchool.SchoolDist);
+                    }
+                    else {
+                        d3.select("#schoolTable").select("." + eventParameters.schoolPoint).remove();
+                    }
+                }
+                else if(eventParameters.method == "school") {
+                    var clickedSchool = statsData.Schools[eventParameters.schoolPoint.slice(1)];
+
+                    if (eventParameters.action == true) {
+                        var row = d3.select("#schoolTable").select("tbody").append("tr").classed(eventParameters.schoolPoint, true);
+                        row.append("td").text(clickedSchool.ATS_CODE).classed("idColumn", true);
+                        row.append("td").text(clickedSchool.SCHOOLNAME);
+                    }
+                    else {
+                        d3.select("#schoolTable").select("." + eventParameters.schoolPoint).remove();
+                    }
                 }
 
                 bar_vis.clicked(eventParameters);
+
+                //Disable after 6 items clicked
+                var selectedItems = $('#schoolDropDown option:selected');
+
+                if (selectedItems.length >=6)
+                {
+                    var nonSelectedOptions = $('#schoolDropDown option').filter(function(){
+                        return (!$(this).is(':selected')) && this.value != eventParameters.schoolPoint;
+                    });
+
+                    var dropdown = $('#schoolDropDown').siblings('.multiselect-container');
+                    nonSelectedOptions.each(function(){
+                        var input = $('input[value="' + $(this).val() + '"]');
+                        input.prop('disabled', true);
+                        input.parent('li').addClass('disabled');
+                    })
+                }
+                else
+                {
+                    var dropdown = $('#schoolDropDown').siblings('.multiselect-container');
+                    $('#schoolDropDown option').each(function() {
+                        var input = $('input[value="' + $(this).val() + '"]');
+                        input.prop('disabled', false);
+                        input.parent('li').addClass('disabled');
+                    });
+                }
             })
 
             //Set the default pressed button
             d3.select("#schoolButton").classed("active", true);
             d3.select("#schoolButton").classed("btn-primary", true);
+
+            //Set up the drop down for the schools
+            var schoolDropDownData = [];
+            for (var i=0; i<geoData.objects.nysp.geometries.length; i++)
+            {
+                schoolDropDownData.push({label: geoData.objects.nysp.geometries[i].properties.SCHOOLNAME, value: "S" + geoData.objects.nysp.geometries[i].properties.ATS_CODE });
+            }
+
+            schoolDropDownData = schoolDropDownData.sort(function(a, b){
+                return a.label < b.label ? -1 : a.label > b.label ? 1 : a.label >= b.label ? 0 : NaN;
+            });
+
+            $("#schoolDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                nonSelectedText: "None",
+                maxHeight: 200,
+                numberDisplayed: 0,
+                onChange: function(option, checked, select){
+
+                    var selectedItems = $('#schoolDropDown option:selected');
+
+                    if (selectedItems.length >=6)
+                    {
+                        var nonSelectedOptions = $('#schoolDropDown option').filter(function(){
+                            return !$(this).is(':selected');
+                        });
+
+                        var dropdown = $('#schoolDropDown').siblings('.multiselect-container');
+                        nonSelectedOptions.each(function(){
+                            var input = $('input[value="' + $(this).val() + '"]');
+                            input.prop('disabled', true);
+                            input.parent('li').addClass('disabled');
+                        })
+
+                        if(selectedItems.length = 6)
+                        {
+                            geo_vis.onSelectChange({"selections": option[0].value});
+                            line_vis.clicked(option[0].value, "geo");
+
+                        }
+                    }
+                    else
+                    {
+                        var dropdown = $('#schoolDropDown').siblings('.multiselect-container');
+                        $('#schoolDropDown option').each(function() {
+                            var input = $('input[value="' + $(this).val() + '"]');
+                            input.prop('disabled', false);
+                            input.parent('li').addClass('disabled');
+                        });
+
+                        geo_vis.onSelectChange({"selections": option[0].value});
+                        line_vis.clicked(option[0].value, "geo");
+                    }
+                }
+            });
+            $("#schoolDropDown").multiselect("dataprovider", schoolDropDownData);
 
             d3.select("#boroughButton")
                     .on("click", function(d){
@@ -356,8 +1122,75 @@
                         d3.select("#schoolButton").classed("btn-primary", false);
                         d3.select("#schoolButton").classed("btn-default", true);
 
-                        geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
-                        line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                        $("#boroughDropDown").multiselect("deselectAll", false);
+                        $("#boroughDropDown").multiselect("updateButtonText", true);
+                        $("#districtDropDown").multiselect("deselectAll", false);
+                        $("#districtDropDown").multiselect("updateButtonText", true);
+                        $("#schoolTypeDropDown").multiselect("deselectAll", false);
+                        $("#schoolTypeDropDown").multiselect("updateButtonText", true);
+                        $("#programTypeDropDown").multiselect("deselectAll", false);
+                        $("#programTypeDropDown").multiselect("updateButtonText", true);
+
+                        d3.select("#filterBy").style("display","none");
+                        d3.select("#choiceStep").html("<span class='glyphicon glyphicon-pushpin'></span> 2. Choose your boroughs <small>Choose a metric of interest. Select from dropdown or click a borough of interest (6 maximum).</small>");
+                        d3.select("#compareStep").html("<span class='glyphicon glyphicon-stats'></span> 3. Compare boroughs <small>Choose comparison metrics.</small>");
+
+                        var newSelectData = geoData.objects.nybb.geometries.map(function(d){
+                            return {"label": d.properties.BoroName, "value": "B" + d.properties.BoroCode};
+                        }).sort(function(a, b){
+                            return a.label > b.label;
+                        });
+
+                        $("#schoolDropDown").multiselect("dataprovider", newSelectData);
+
+                        var newMetricData = keyBoroughMetrics.map(function(d){
+                            return {"label": d.label, "value": d.metric}
+                        });
+
+                        var metricOptions = [
+                            {"label": "Enrollment Density / SqM", "value": "EnrollmentDensitySM"},
+                            {"label": "Avg Class Sizes", "children": []},
+                            {"label": "Math Test Scores", "children": []},
+                            {"label": "English Test Scores", "children": []},
+                            {"label": "Graduation Outcomes", "children": []}
+                        ];
+
+                        for (var item in newMetricData)
+                        {
+                            if(newMetricData[item].value == "ClassSizeGenEdAverage" || newMetricData[item].value == "ClassSizeSpecialEdAverage" || newMetricData[item].value == "ClassSizeCTTAverage" || newMetricData[item].value == "ClassSizeGTAverage")
+                            {
+                                metricOptions[1].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "MathMean" || newMetricData[item].value == "MathLevelOnePct" || newMetricData[item].value == "MathLevelTwoPct" || newMetricData[item].value == "MathLevelThreePct" || newMetricData[item].value == "MathLevelFourPct")
+                            {
+                                metricOptions[2].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "EnglishMean" || newMetricData[item].value == "EnglishLevelOnePct" || newMetricData[item].value == "EnglishLevelTwoPct" || newMetricData[item].value == "EnglishLevelThreePct" || newMetricData[item].value == "EnglishLevelFourPct")
+                            {
+                                metricOptions[3].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "GraduationOutcomeTotalGradPercentage" || newMetricData[item].value == "GraduationOutcomeStillEnrolledPercentageCohort" || newMetricData[item].value == "GraduationOutcomeDroppedOutPercentageCohort")
+                            {
+                                metricOptions[4].children.push(newMetricData[item]);
+                            }
+                        }
+
+                        $("#metricDropDown").multiselect("dataprovider", metricOptions);
+
+                        $("#metricDropDown").multiselect("select", "EnrollmentDensitySM", true);
+
+
+                        $("#barMetricDropDown").multiselect("dataprovider", metricOptions);
+
+                        d3.select("#schoolTable").selectAll("tr").remove();
+
+                        var row = d3.select("#schoolTable").select("tbody").append("tr");
+                        row.append("th").text("#").classed("idColumn", true);
+                        row.append("th").text("Borough");
+
+                        line_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                        bar_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                        geo_vis.onButtonChange({"metrics": $('#metricDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
                     });
 
             d3.select("#schoolDistrictButton")
@@ -372,8 +1205,70 @@
                         d3.select("#schoolButton").classed("btn-primary", false);
                         d3.select("#schoolButton").classed("btn-default", true);
 
-                        geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
-                        line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                        $("#boroughDropDown").multiselect("deselectAll", false);
+                        $("#boroughDropDown").multiselect("updateButtonText", true);
+                        $("#districtDropDown").multiselect("deselectAll", false);
+                        $("#districtDropDown").multiselect("updateButtonText", true);
+                        $("#schoolTypeDropDown").multiselect("deselectAll", false);
+                        $("#schoolTypeDropDown").multiselect("updateButtonText", true);
+                        $("#programTypeDropDown").multiselect("deselectAll", false);
+                        $("#programTypeDropDown").multiselect("updateButtonText", true);
+
+                        d3.select("#filterBy").style("display","none");
+                        d3.select("#choiceStep").html("<span class='glyphicon glyphicon-pushpin'></span> 2. Choose your districts <small>Choose a metric of interest. Select from dropdown or click a district of interest (6 maximum).</small>");
+                        d3.select("#compareStep").html("<span class='glyphicon glyphicon-stats'></span> 3. Compare districts <small>Choose comparison metrics.</small>");
+
+                        var newSelectData = geoData.objects.nysd.geometries.map(function(d){
+                            return {"label": d.properties.SchoolDist, "value": "D" + d.properties.SchoolDist};
+                        }).sort(function(a, b){
+                            return parseInt(a.value.slice(1)) - parseInt(b.value.slice(1));
+                        });
+
+                        $("#schoolDropDown").multiselect("dataprovider", newSelectData);
+
+                        var newMetricData = keyDistrictMetrics.map(function(d){
+                            return {"label": d.label, "value": d.metric}
+                        });
+
+                        var metricOptions = [
+                            {"label": "Enrollment Density / SqM", "value": "EnrollmentDensitySM"},
+                            {"label": "Avg Attendance", "value": "DistrictAttendance"},
+                            {"label": "Avg Class Sizes", "children": []},
+                            {"label": "Math Test Scores", "children": []},
+                            {"label": "English Test Scores", "children": []}
+                        ];
+
+                        for (var item in newMetricData)
+                        {
+                            if(newMetricData[item].value == "ClassSizeGenEdAverage" || newMetricData[item].value == "ClassSizeSpecialEdAverage" || newMetricData[item].value == "ClassSizeCTTAverage" || newMetricData[item].value == "ClassSizeGTAverage")
+                            {
+                                metricOptions[2].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "MathMean" || newMetricData[item].value == "MathLevelOnePct" || newMetricData[item].value == "MathLevelTwoPct" || newMetricData[item].value == "MathLevelThreePct" || newMetricData[item].value == "MathLevelFourPct")
+                            {
+                                metricOptions[3].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "EnglishMean" || newMetricData[item].value == "EnglishLevelOnePct" || newMetricData[item].value == "EnglishLevelTwoPct" || newMetricData[item].value == "EnglishLevelThreePct" || newMetricData[item].value == "EnglishLevelFourPct")
+                            {
+                                metricOptions[4].children.push(newMetricData[item]);
+                            }
+                        }
+
+                        $("#metricDropDown").multiselect("dataprovider", metricOptions);
+
+                        $("#metricDropDown").multiselect("select", "EnrollmentDensitySM", true);
+
+                        $("#barMetricDropDown").multiselect("dataprovider", metricOptions);
+
+                        d3.select("#schoolTable").selectAll("tr").remove();
+
+                        var row = d3.select("#schoolTable").select("tbody").append("tr");
+                        row.append("th").text("#").classed("idColumn", true);
+                        row.append("th").text("District");
+
+                        line_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                        bar_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                        geo_vis.onButtonChange({"metrics": $('#metricDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
                     });
 
             d3.select("#schoolButton")
@@ -388,11 +1283,98 @@
                         d3.select("#schoolDistrictButton").classed("btn-primary", false);
                         d3.select("#schoolDistrictButton").classed("btn-default", true);
 
-                        geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
-                        line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                        d3.select("#filterBy").style("display", null);
+                        d3.select("#choiceStep").html("<span class='glyphicon glyphicon-pushpin'></span> 2. Choose your schools <small>Choose a metric of interest. Select from dropdown or click a school of interest (6 maximum).</small>");
+                        d3.select("#compareStep").html("<span class='glyphicon glyphicon-stats'></span> 3. Compare schools <small>Choose comparison metrics.</small>");
+
+                        var newSelectData = geoData.objects.nysp.geometries.map(function(d){
+                            return {"label": d.properties.SCHOOLNAME, "value": "S" + d.properties.ATS_CODE};
+                        }).sort(function(a, b){
+                            return a.label < b.label ? -1 : a.label > b.label ? 1 : a.label >= b.label ? 0 : NaN;
+                        });
+
+                        var newMetricData = keySchoolMetrics.map(function(d){
+                            return {"label": d.label, "value": d.metric}
+                        });
+
+                        var metricOptions = [
+                            {"label": "Location", "value": "Location"},
+                            {"label": "Progress Report Scores", "children": []},
+                            {"label": "Survey Total Opinions", "children": []},
+                            {"label": "Survey Student Opinions", "children": []},
+                            {"label": "Survey Parent Opinions", "children": []},
+                            {"label": "Survey Teacher Opinions", "children": []},
+                            {"label": "Avg Class Sizes", "children": []},
+                            {"label": "Building Crime Rates", "children": []},
+                            {"label": "Math Test Scores", "children": []},
+                            {"label": "English Test Scores", "children": []},
+                            {"label": "Graduation Outcomes", "children": []},
+                        ];
+
+                        for (var item in newMetricData)
+                        {
+                            if(newMetricData[item].value =="ProgressReportOverallScore" || newMetricData[item].value == "ProgressReportEnvironmentCategoryScore" || newMetricData[item].value == "ProgressReportPerformanceCategoryScore" || newMetricData[item].value == "ProgressReportProgressCategoryScore" || newMetricData[item].value == "ProgressReportAdditionalCredit")
+                            {
+                                metricOptions[1].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "SurveyTotalAcademicExpectationsScore" || newMetricData[item].value == "SurveyTotalCommunicationScore" || newMetricData[item].value == "SurveyTotalEngagementScore" || newMetricData[item].value == "SurveyTotalSafetyRespectScore")
+                            {
+                                metricOptions[2].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "SurveyStudentResponseRate" || newMetricData[item].value == "SurveyStudentAcademicExpectationsScore" || newMetricData[item].value == "SurveyStudentCommunicationScore" || newMetricData[item].value == "SurveyStudentEngagementScore" || newMetricData[item].value == "SurveyStudentSafetyRespectScore")
+                            {
+                                metricOptions[3].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "SurveyParentResponseRate" || newMetricData[item].value == "SurveyParentAcademicExpectationsScore" || newMetricData[item].value == "SurveyParentCommunicationScore" || newMetricData[item].value == "SurveyParentEngagementScore" || newMetricData[item].value == "SurveyParentSafetyRespectScore")
+                            {
+                                metricOptions[4].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "SurveyTeacherResponseRate" || newMetricData[item].value == "SurveyTeacherAcademicExpectationsScore" || newMetricData[item].value == "SurveyTeacherCommunicationScore" || newMetricData[item].value == "SurveyTeacherEngagementScore" || newMetricData[item].value == "SurveyTeacherSafetyRespectScore")
+                            {
+                                metricOptions[5].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "ClassSizeGenEdAverage" || newMetricData[item].value == "ClassSizeSpecialEdAverage" || newMetricData[item].value == "ClassSizeCTTAverage" || newMetricData[item].value == "ClassSizeGTAverage")
+                            {
+                                metricOptions[6].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "BuildingCrimeMajorRate" || newMetricData[item].value == "BuildingCrimeOtherRate" || newMetricData[item].value == "BuildingCrimeNoncriminalRate")
+                            {
+                                metricOptions[7].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "MathMean" || newMetricData[item].value == "MathLevelOnePct" || newMetricData[item].value == "MathLevelTwoPct" || newMetricData[item].value == "MathLevelThreePct" || newMetricData[item].value == "MathLevelFourPct")
+                            {
+                                metricOptions[8].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "EnglishMean" || newMetricData[item].value == "EnglishLevelOnePct" || newMetricData[item].value == "EnglishLevelTwoPct" || newMetricData[item].value == "EnglishLevelThreePct" || newMetricData[item].value == "EnglishLevelFourPct")
+                            {
+                                metricOptions[9].children.push(newMetricData[item]);
+                            }
+                            else if(newMetricData[item].value == "GraduationOutcomeTotalGradPercentage" || newMetricData[item].value == "GraduationOutcomeStillEnrolledPercentageCohort" || newMetricData[item].value == "GraduationOutcomeDroppedOutPercentageCohort")
+                            {
+                                metricOptions[10].children.push(newMetricData[item]);
+                            }
+                        }
+
+                        var filteredNewMetricData = metricOptions.filter(function(d){
+                            return d.label != "Location";
+                        });
+
+                        $("#metricDropDown").multiselect("dataprovider", metricOptions);
+
+                        $("#metricDropDown").multiselect("select", "Location", true);
+
+                        $("#barMetricDropDown").multiselect("dataprovider", filteredNewMetricData);
+
+                        d3.select("#schoolTable").selectAll("tr").remove();
+
+                        var row = d3.select("#schoolTable").select("tbody").append("tr");
+                        row.append("th").text("#").classed("idColumn", true);
+                        row.append("th").text("School");
+
+                        line_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                        bar_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                        geo_vis.onButtonChange({"metrics": $('#metricDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
                     });
-
-
 
             //Set up the drop down for the boroughs
             var boroughDropDownData = [];
@@ -402,24 +1384,33 @@
             }
 
             boroughDropDownData = boroughDropDownData.sort(function(a, b){
-                return a.value - b.value;
+                return a.label > b.label;
             });
 
             $("#boroughDropDown").multiselect({
                 enableCaseInsensitiveFiltering: true,
-                includeSelectAllOption: true,
-                nonSelectedText: "None",
+                nonSelectedText: "All Boroughs",
+                allSelectedText: "All Boroughs",
+                selectAllNumber: false,
+                nSelectedText: "Boroughs",
+                numberDisplayed: 0,
+                buttonWidth: "120px",
                 onChange: function(option, checked, select){
-                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
-                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    resetTable();
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected'), "clearSelection": true});
+                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    $("#barMetricDropDown").multiselect("deselectAll", false);
+                    $("#barMetricDropDown").multiselect("rebuild");
+                    bar_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                    updateSelectList();
                 }
             });
             $("#boroughDropDown").multiselect("dataprovider", boroughDropDownData);
 
-
             //Set up the drop down for the school districts
+            //Put in -1 so we don't get duplicate 10s
             var schoolDistrictDropDownData = [];
-            for (var i=0; i<geoData.objects.nysd.geometries.length; i++)
+            for (var i=0; i<geoData.objects.nysd.geometries.length - 1; i++)
             {
                 schoolDistrictDropDownData.push({label: geoData.objects.nysd.geometries[i].properties.SchoolDist, value: geoData.objects.nysd.geometries[i].properties.SchoolDist });
             }
@@ -430,36 +1421,24 @@
 
             $("#districtDropDown").multiselect({
                 enableCaseInsensitiveFiltering: true,
-                includeSelectAllOption: true,
-                nonSelectedText: "None",
+                nonSelectedText: "All Districts",
+                allSelectedText: "All Districts",
+                selectAllNumber: false,
+                nSelectedText: "Districts",
+                numberDisplayed: 0,
+                maxHeight: 200,
+                buttonWidth: "110px",
                 onChange: function(option, checked, select){
-                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
-                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    resetTable();
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected'), "clearSelection": true});
+                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    $("#barMetricDropDown").multiselect("deselectAll", false);
+                    $("#barMetricDropDown").multiselect("rebuild");
+                    bar_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                    updateSelectList();
                 }
             });
             $("#districtDropDown").multiselect("dataprovider", schoolDistrictDropDownData);
-
-
-            //Set up the drop down for the schools
-            var schoolDropDownData = [];
-            for (var i=0; i<geoData.objects.nysp.geometries.length; i++)
-            {
-                schoolDropDownData.push({label: geoData.objects.nysp.geometries[i].properties.SCHOOLNAME, value: geoData.objects.nysp.geometries[i].properties.ATS_CODE });
-            }
-
-            schoolDropDownData = schoolDropDownData.sort(function(a, b){
-                return a.value - b.value;
-            });
-
-            $("#schoolDropDown").multiselect({
-                enableCaseInsensitiveFiltering: true,
-                includeSelectAllOption: true,
-                nonSelectedText: "None",
-                onChange: function(option, checked, select){
-                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schools": $('#schoolDropDown option:selected'), "metrics": $('#metricDropDown option:selected')});
-                }
-            });
-            $("#schoolDropDown").multiselect("dataprovider", schoolDropDownData);
 
             //Set up the drop down for the school types
             var schoolTypes = d3.set(geoData.objects.nysp.geometries.map(function(d){
@@ -474,49 +1453,171 @@
             }
 
             schoolTypeDropDownData = schoolTypeDropDownData.sort(function(a, b){
-                return a.value - b.value;
+                return a.label > b.label;
             });
 
             $("#schoolTypeDropDown").multiselect({
                 enableCaseInsensitiveFiltering: true,
-                includeSelectAllOption: true,
-                nonSelectedText: "None",
+                nonSelectedText: "All Levels",
+                allSelectedText: "All Levels",
+                selectAllNumber: false,
+                nSelectedText: "Levels",
+                numberDisplayed: 0,
+                buttonWidth: "100px",
                 onChange: function(option, checked, select){
-                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
-                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    resetTable();
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected'), "clearSelection": true});
+                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    $("#barMetricDropDown").multiselect("deselectAll", false);
+                    $("#barMetricDropDown").multiselect("rebuild");
+                    bar_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                    updateSelectList();
                 }
             });
             $("#schoolTypeDropDown").multiselect("dataprovider", schoolTypeDropDownData);
 
-            var metricDropDownData = [
-                {
-                    label: "School District", children: [
-                    {label: "District Attendance %", value: "DistrictAttendance"}
-                ]
-                },
-                {
-                    label: "School", children: [
+            //Set up the drop down for the program types
 
-                {label: "Quality Score", value: "QualityScore"},
-                {label: "Total Graduation Percentage", value: "GraduationOutcomeTotalGradPercentage"},
-                {label: "Progress Report Overall Grade", value: "ProgressReportOverallGrade"},
-                {label: "Student to Teacher Ratio", value: "StudentToTeacherRatio"}
-                ]
-                }
+            var programTypeDropDownData = [
+                {label: "Animal Science", value: "Animal Science"},
+                {label: "Architecture", value: "Architecture"},
+                {label: "Business", value: "Business"},
+                {label: "Communications", value: "Communications"},
+                {label: "Computer Science & Technology", value: "Computer Science & Technology"},
+                {label: "Cosmetology", value: "Cosmetology"},
+                {label: "Culinary Arts", value: "Culinary Arts"},
+                {label: "Engineering", value: "Engineering"},
+                {label: "Environmental Science", value: "Environmental Science"},
+                {label: "Film/Video", value: "Film/Video"},
+                {label: "Health Professions", value: "Health Professions"},
+                {label: "Hospitality, Travel and Tourism", value: "Hospitality, Travel and Tourism"},
+                {label: "Humanities & Interdisciplinary", value: "Humanities & Interdisciplinary"},
+                {label: "JROTC", value: "JROTC"},
+                {label: "Law & Government", value: "Law & Government"},
+                {label: "Performing Arts", value: "Performing Arts"},
+                {label: "Performing Arts/Visual Art & Design", value: "Performing Arts/Visual Art & Design"},
+                {label: "Science & Math", value: "Science & Math"},
+                {label: "Teaching", value: "Teaching"},
+                {label: "Visual Art & Design", value: "Visual Art & Design"},
+                {label: "Zoned", value: "Zoned"}
             ];
+
+            $("#programTypeDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                nonSelectedText: "All Programs",
+                allSelectedText: "All Programs",
+                selectAllNumber: false,
+                nSelectedText: "Programs",
+                numberDisplayed: 0,
+                maxHeight: 200,
+                buttonWidth: "120px",
+                onChange: function(option, checked, select){
+                    resetTable();
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected'), "clearSelection": true});
+                    line_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id});
+                    $("#barMetricDropDown").multiselect("deselectAll", false);
+                    $("#barMetricDropDown").multiselect("rebuild");
+                    bar_vis.onButtonChange({"metricType": $('.btn-group > .btn.active')[0].id});
+                    updateSelectList();
+                }
+            });
+            $("#programTypeDropDown").multiselect("dataprovider", programTypeDropDownData);
+
+            var newMetricData = keySchoolMetrics.map(function(d){
+                return {"label": d.label, "value": d.metric}
+            });
+
+            var metricOptions = [
+                {"label": "Location", "value": "Location"},
+                {"label": "Progress Report Scores", "children": []},
+                {"label": "Survey Total Opinions", "children": []},
+                {"label": "Survey Student Opinions", "children": []},
+                {"label": "Survey Parent Opinions", "children": []},
+                {"label": "Survey Teacher Opinions", "children": []},
+                {"label": "Avg Class Sizes", "children": []},
+                {"label": "Building Crime Rates", "children": []},
+                {"label": "Math Test Scores", "children": []},
+                {"label": "English Test Scores", "children": []},
+                {"label": "Graduation Outcomes", "children": []},
+            ];
+
+            for (var item in newMetricData)
+            {
+                if(newMetricData[item].value =="ProgressReportOverallScore" || newMetricData[item].value == "ProgressReportEnvironmentCategoryScore" || newMetricData[item].value == "ProgressReportPerformanceCategoryScore" || newMetricData[item].value == "ProgressReportProgressCategoryScore" || newMetricData[item].value == "ProgressReportAdditionalCredit")
+                {
+                    metricOptions[1].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "SurveyTotalAcademicExpectationsScore" || newMetricData[item].value == "SurveyTotalCommunicationScore" || newMetricData[item].value == "SurveyTotalEngagementScore" || newMetricData[item].value == "SurveyTotalSafetyRespectScore")
+                {
+                    metricOptions[2].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "SurveyStudentResponseRate" || newMetricData[item].value == "SurveyStudentAcademicExpectationsScore" || newMetricData[item].value == "SurveyStudentCommunicationScore" || newMetricData[item].value == "SurveyStudentEngagementScore" || newMetricData[item].value == "SurveyStudentSafetyRespectScore")
+                {
+                    metricOptions[3].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "SurveyParentResponseRate" || newMetricData[item].value == "SurveyParentAcademicExpectationsScore" || newMetricData[item].value == "SurveyParentCommunicationScore" || newMetricData[item].value == "SurveyParentEngagementScore" || newMetricData[item].value == "SurveyParentSafetyRespectScore")
+                {
+                    metricOptions[4].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "SurveyTeacherResponseRate" || newMetricData[item].value == "SurveyTeacherAcademicExpectationsScore" || newMetricData[item].value == "SurveyTeacherCommunicationScore" || newMetricData[item].value == "SurveyTeacherEngagementScore" || newMetricData[item].value == "SurveyTeacherSafetyRespectScore")
+                {
+                    metricOptions[5].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "ClassSizeGenEdAverage" || newMetricData[item].value == "ClassSizeSpecialEdAverage" || newMetricData[item].value == "ClassSizeCTTAverage" || newMetricData[item].value == "ClassSizeGTAverage")
+                {
+                    metricOptions[6].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "BuildingCrimeMajorRate" || newMetricData[item].value == "BuildingCrimeOtherRate" || newMetricData[item].value == "BuildingCrimeNoncriminalRate")
+                {
+                    metricOptions[7].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "MathMean" || newMetricData[item].value == "MathLevelOnePct" || newMetricData[item].value == "MathLevelTwoPct" || newMetricData[item].value == "MathLevelThreePct" || newMetricData[item].value == "MathLevelFourPct")
+                {
+                    metricOptions[8].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "EnglishMean" || newMetricData[item].value == "EnglishLevelOnePct" || newMetricData[item].value == "EnglishLevelTwoPct" || newMetricData[item].value == "EnglishLevelThreePct" || newMetricData[item].value == "EnglishLevelFourPct")
+                {
+                    metricOptions[9].children.push(newMetricData[item]);
+                }
+                else if(newMetricData[item].value == "GraduationOutcomeTotalGradPercentage" || newMetricData[item].value == "GraduationOutcomeStillEnrolledPercentageCohort" || newMetricData[item].value == "GraduationOutcomeDroppedOutPercentageCohort")
+                {
+                    metricOptions[10].children.push(newMetricData[item]);
+                }
+            }
+
+            var filteredNewMetricData = metricOptions.filter(function(d){
+                return d.label != "Location";
+            });
 
             $("#metricDropDown").multiselect({
                 enableCaseInsensitiveFiltering: true,
-                includeSelectAllOption: true,
-                nonSelectedTest: "None",
+                nonSelectedText: "None",
+                maxHeight: 200,
+                buttonWidth: "206px",
                 onChange: function(option, checked, select){
-                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected')});
+                    geo_vis.onFilterChange({"boroughs": $('#boroughDropDown option:selected'), "districts": $('#districtDropDown option:selected'), "schoolTypes": $('#schoolTypeDropDown option:selected'), "programTypes": $('#programTypeDropDown option:selected'), "metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#metricDropDown option:selected'), "sender": "metricDropDown"});
                 }
             });
-            $("#metricDropDown").multiselect("dataprovider", metricDropDownData);
+            $("#metricDropDown").multiselect("dataprovider", metricOptions);
 
-            $("#metricDropDown").multiselect("deselect", "DistrictAttendance");
-            $("#metricDropDown").multiselect("select", "QualityScore");
+            //$("#metricDropDown").multiselect("select", "Location");
+
+            $("#barMetricDropDown").multiselect({
+                enableCaseInsensitiveFiltering: true,
+                includeSelectAllOption: true,
+                nonSelectedText: "No Metrics",
+                allSelectedText: "All Metrics",
+                selectAllNumber: false,
+                nSelectedText: "Metrics",
+                numberDisplayed: 0,
+                maxHeight: 200,
+                buttonWidth: "120px",
+                enableClickableOptGroups: true,
+                onChange: function(option, checked, select){
+                    bar_vis.onFilterChange({"metricType": $('.btn-group > .btn.active')[0].id, "metrics": $('#barMetricDropDown option:selected')});
+                }
+            });
+            $("#barMetricDropDown").multiselect("dataprovider", filteredNewMetricData);
 
             $('.equalHeight').each(function(){
                 var equal = $(this).innerHeight();

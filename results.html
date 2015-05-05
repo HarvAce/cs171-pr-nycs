@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+
+
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <script src="libs/jquery-2.1.3.min.js"></script>
+    <script src="libs/bootstrap.min.js" charset="utf-8"></script>
+
+    <style>
+        body{
+            background-color: #F0F0F0;
+        }
+        .navbar .navbar-nav {
+            display: inline-block;
+            float: none;
+            vertical-align: top;
+        }
+
+        .navbar {
+            text-align: center;
+        }
+        .jumbotron{
+            min-height: 650px;
+            background-color: white;
+            background-image: url("img/silhouetteLarge.gif");
+            background-repeat: no-repeat;
+            background-position: right bottom;
+            background-size: 1140px;
+            margin: 0px;
+            padding: 0px;
+
+        }
+        iframe{
+            width: 1140;
+        }
+        .vertical-center {
+            display: flex;
+            align-items: center;
+        }
+        .page-header{
+            margin-top: 0px;
+            margin-bottom: 0px;
+            padding-bottom: 0px;
+        }
+        h1 a{
+            color: black;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <h1><a href="index.html">New York City Schools</a></h1>
+    </div>
+    <nav class="navbar navbar-default">
+        <div class="navbar-header">
+            <ul class="nav navbar-nav">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="nycs.html">Visualization</a></li>
+                <li><a href="process.html">Process Book</a></li>
+                <li><a href="sources.html">Sources</a></li>
+                <li><a href="profile.html">Data Lineage & Profile</a></li>
+                <li class="active"><a href="results.html">Results</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="panel panel-default">
+        <div class="row">
+            <div class="col-lg-12" style="padding-left: 30px; padding-right: 30px;">
+                <h3>Results</h3>
+                <p>I selected this topic because I have a passion for using technology to enhance education, and I thought a data visualization on this topic could enhance the experience of comparing boroughs, school districts, and schools on a variety of metrics that the user chooses.  The goal is to enable the user to input his/her definition of best, geospatially visualize all of the boroughs, school districts, or schools that meet this definition, and select specific points of interest for detailed comparison so the user can decide which are the best fit.  This visualization also supports scenarios of determining which boroughs, school districts, or schools are the worst fit and determining which metrics influence other metrics, for instance, whether class size influences graduation rate.</p>
+                <p>The terms of use of the New York City Open Data state that: "Public data sets made available on the NYC OpenData portal are provided for informational purposes. The City does not warranty the completeness, accuracy, content, or fitness for any particular purpose or use of any public data set made available on the NYC OpenData portal, nor are any such warranties to be implied or inferred with respect to the public data sets furnished therein.  The City is not liable for any deficiencies in the completeness, accuracy, content, or fitness for any particular purpose or use of any public data set, or application utilizing such data set, provided by any third party."</p>
+                <p>A key outcome of completing this project was recognizing some of the limitations of the New York City Open Data portal.  First, the most current school year of data available across all of the metrics is 2010-2011, which means that conditions may have changed in the past 4 years.  Next, there were some errors in the data that became apparent once the data was projected geospatially.  For instance, the School Point shape file had several of the Brooklyn schools tagged as the Bronx.  Another data set had Queens labeled "Oueens".  All of these errors were corrected during data cleansing.  I learned that the New York City Open Data portal has a feedback mechanism to report errors in data, and I plan to pursue reporting my findings.  The New York City Open Data portal also lacks a data dictionary.  I learned a tremendous amount about the New York City school data by crawling the New York City Department of Education website to piece together definitions.  Lastly, there are some schools for which data is not available.  There were data sets that I was not able to use because there was so little data in them that they would not be meaningful, such as demographic statistics for only 2,000 students when New York City schools support over 1 million students.  There were even data sets missing, such as Graduation Outcome data at the district level.  Though there are some limitations of using the New York City Open Data portal, it should be commended that New York City has released a subset of its education data in this manner.  This project was only possible because that data was released.  Most school districts do not release their data in this manner.</p>
+                <p>Another key outcome of this project was bringing together 20 different data sets for user consumption in one place.  If I was a user looking for more information on New York City Schools, I wouldn't want to open 20 different files and read the New York City Department of Education website.  In addition, though the New York City Department of Education website offers detailed guides on most metric categories, users are typically limited to search by individual school.  This data visualization enables a user to perform more open-ended holistic searching.</p>
+                <p>I was surprised by some of the results I saw within the visualization.  There was a school with a 4% graduation rate for the cohort graduation year ending in August, and a handful of schools with graduation rates under 10%.  On the other end of the spectrum, there were schools with 100% graduation rates.  For NYS Math and ELA Tests, Bronx and Brooklyn have the lower test scores.  Since Bronx and Brooklyn have the lower test scores, Bronx and Brooklyn also have the lower progress report scores because the test scores are a component of the progress report scores.  Another interesting observation is that schools with larger average general education class sizes have higher graduation rates.  School buildings with lower crime rates also have higher graduation rates.  The Bronx was found to perform the worst across most of the categories.</p>
+                <p>I started this project looking to give users a holistic view of New York City schools so they could make their own informed decisions on what schools, districts, and boroughs would be best for them.  I feel I have accomplished this goal and learned a lot about the New York City School System in the process.  It seems that there is an endless list of questions that can be addressed through this visualization, and I have enjoyed asking many of my own.</p>
+                <p>I would like to thank all of the individuals who have participated in rounds of iterative feedback to enhance this visualization.  It is a better product because of you.</p>
+            </div>
+        </div>
+    </div>
+    <nav class="navbar navbar-default">
+        <div class="collapse navbar-collapse navbar-ex1-collapse">
+            <ul class="nav navbar-nav" style="color: #777">
+                All data sourced from New York City Open Data for school year 2010-2011.<br/>
+                Visualization created by Aasta Frascati-Robinson for CS171.
+            </ul>
+        </div>
+    </nav>
+</div>
+</body>
+</html>
