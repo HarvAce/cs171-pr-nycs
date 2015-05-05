@@ -20,8 +20,6 @@ GeoVis = function(_parentElement, _geoData, _metricsData, _eventHandler){
 GeoVis.prototype.initVis = function(){
     var that = this;
 
-    //console.log(that.metricsData);
-
     that.svg = that.parentElement.append("svg")
         .attr("width", that.width + that.margin.left + that.margin.right)
         .attr("height", that.height + that.margin.top + that.margin.bottom)
@@ -225,7 +223,6 @@ GeoVis.prototype.updateVis = function(currentMetric){
         })
         .on("click", function(d){
             if(that.activeFilters.metricType == "boroughButton") {
-                //console.log("B" + d.properties.BoroCode);
                 that.clicked("B" + d.properties.BoroCode);
                 $(that.eventHandler).trigger("clickedGeo", {
                     method: "school",
@@ -244,7 +241,6 @@ GeoVis.prototype.updateVis = function(currentMetric){
 
                 $(that.eventHandler).trigger("hoverMap", {schoolPoint: "B" + d.properties.BoroCode});
             }
-            //d3.select(this).attr("r", "10px");
         })
         .on("mouseout", function(d){
             if(that.activeFilters.metricType == "boroughButton") {
@@ -772,11 +768,9 @@ GeoVis.prototype.onFilterChange = function(filters){
 
     if(filters.sender == "metricDropDown")
     {
-        console.log("METRIC DROP DOWN");
         this.wrangleData({"filters": filters, "schoolList": that.schoolList});
     }
     else {
-        console.log("FILTER HIT");
         this.wrangleData({"filters": filters /*, "schoolList": that.schoolList*/}); //"schoolList": that.schoolList
     }
     this.updateVis(filters.metrics[0].value);
@@ -891,7 +885,6 @@ GeoVis.prototype.filterAndAggregate = function(_filter) {
     }
     else
     {
-        console.log("I WRANGELD NULL");
         that.displayData.objects.nysp.geometries = that.geoData.objects.nysp.geometries;
     }
 

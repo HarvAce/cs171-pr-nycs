@@ -28,7 +28,6 @@ BarVis.prototype.initVis = function() {
         .direction('w')
         .offset([0, 0])
         .html(function(d){
-            //console.log(d);
             var decimalFormat = d3.format("." + d.currentMetricInfo.formatPrecision + "f");
             if (that.activeMetricType == "boroughButton")
             {
